@@ -47,10 +47,10 @@ the Google Drive version name in local outputs.
    - Baseline: ResNet-50, single image, binary classification.
    - Optional: binary or multiclass heads for either image or window inputs.
 
-For new gameplay versions, read `workflows/new_dataset_static_val.md`. The
-current comparison policy is to keep the validation source videos from `v1`
-static and add new matches to the training split unless the user asks to
-re-split validation.
+For new gameplay versions with a static validation request, read
+`workflows/new_dataset_static_val.md`. The comparison policy is to keep
+validation source videos from the requested base dataset fixed and add new
+matches to the training split unless the user asks to re-split validation.
 
 ## Dataset Contract
 

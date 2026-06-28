@@ -1,29 +1,35 @@
 # New Gameplay Dataset With Static Validation
 
-Use this workflow when a new gameplay workbook appears at
-`googdrive:skyball/datasets/gameplay/<version>.xlsx` and the goal is to add new
-matches to training while keeping the validation set fixed for comparability.
+Use this workflow when adding a new gameplay workbook while preserving an
+existing validation split for comparable metrics.
+
+## Parameters
+
+- `NEW_VERSION`: the new workbook and output version, such as `vN`.
+- `BASE_VERSION`: the existing dataset version whose validation split should be
+  kept fixed.
 
 ## Inputs
 
-- Workbook remote: `googdrive:skyball/datasets/gameplay/<version>.xlsx`
+- Workbook remote: `googdrive:skyball/datasets/gameplay/${NEW_VERSION}.xlsx`
 - Raw video remote: `googdrive:skyball/raw_video`
 - Local workbook root: `/mnt/t/data/vball/skyball/gameplay/ground_truth`
 - Local raw video root: `/mnt/t/data/vball/skyball/raw_video`
 - Dataset root: `/mnt/t/data/vball/skyball/gameplay`
 - Training output root: `/mnt/t/output/trn/skyball_gameplay`
-- Current static validation source: `/mnt/t/data/vball/skyball/gameplay/v1`
+- Static validation source: `/mnt/t/data/vball/skyball/gameplay/${BASE_VERSION}`
 
 ## Dataset Refresh Policy
 
-Keep the validation split static until the user explicitly asks to re-split.
-For a new version such as `v2`, preserve the source videos already in
-`v1/metadata/windows.jsonl` with `split=val` as validation. New source videos
-from the new workbook should be added to `split=train` unless they are already
-part of the frozen validation source-video set.
+Keep the validation split from `BASE_VERSION` static until the user explicitly
+asks to re-split. Preserve all source videos that are marked `split=val` in the
+base dataset metadata as validation in the new dataset. Source videos that are
+new in `NEW_VERSION` should be added to `split=train` unless the user gives a
+different split policy.
 
-This policy makes v1 and v2 metrics comparable: validation changes indicate
-model/data changes, not a new validation distribution.
+This policy makes metrics comparable across dataset refreshes: validation
+changes reflect model or training-data changes, not a new validation
+distribution.
 
 ## Procedure
 
@@ -31,7 +37,7 @@ model/data changes, not a new validation distribution.
 
 ```bash
 mkdir -p /mnt/t/data/vball/skyball/gameplay/ground_truth
-rclone copy googdrive:skyball/datasets/gameplay/<version>.xlsx \
+rclone copy googdrive:skyball/datasets/gameplay/${NEW_VERSION}.xlsx \
   /mnt/t/data/vball/skyball/gameplay/ground_truth/
 ```
 
@@ -47,36 +53,29 @@ rclone copy googdrive:skyball/datasets/gameplay/<version>.xlsx \
    - balanced across gameplay and non-gameplay labels,
    - no samples within 30 seconds of label boundaries unless the user overrides,
    - overlay source video, timestamp, and label.
-6. Stop for user approval of review clips.
+6. Make the review clips available to the user. Treat this as non-blocking when
+   the user has explicitly requested an end-to-end dataset build; continue while
+   preserving the review artifacts and manifest for later inspection.
 7. Extract the versioned dataset under
-   `/mnt/t/data/vball/skyball/gameplay/<version>`:
+   `/mnt/t/data/vball/skyball/gameplay/${NEW_VERSION}`:
    - use `train` and `val` split names,
    - store JPEGs in class folders,
    - write `metadata/windows.jsonl`, `metadata/images.jsonl`,
      `metadata/summary.json`, and `metadata/class_to_idx.json`,
    - include `source_video`, `raw_video_path`, `frame_paths`, `times_sec`,
      `class_name`, `binary_label`, boundary metadata, and `split`.
-8. Verify every referenced image exists, split source videos are disjoint except
-   for intentionally frozen validation carry-over, and class/source-video counts
-   are reported in `summary.json`.
+8. Verify every referenced image exists, frozen validation source videos were
+   preserved, new source videos followed the requested split policy, and
+   class/source-video counts are reported in `summary.json`.
 
-## Training Experiments
+## Training
 
-Train the current best architecture first:
-
-```bash
-DSET_DIR=/mnt/t/data/vball/skyball/gameplay/<version> \
-  scripts/train_best_temporal_resnet50.sh
-```
-
-The launcher defaults to the current best recipe: pretrained ResNet-50, four
-frames, average pooled embeddings, binary head, 224x224 transform, cosine LR.
-
-Run the higher-resolution comparison by overriding the transform size:
+Use this workflow only to define the dataset refresh and split policy. Training
+experiments should be specified by the user request or by the training skill.
+For the current best temporal model, the repo launcher is:
 
 ```bash
-DSET_DIR=/mnt/t/data/vball/skyball/gameplay/<version> \
-IMAGE_HEIGHT=512 IMAGE_WIDTH=512 \
+DSET_DIR=/mnt/t/data/vball/skyball/gameplay/${NEW_VERSION} \
   scripts/train_best_temporal_resnet50.sh
 ```
 
@@ -86,8 +85,8 @@ against `model_registry.yaml` on the same frozen validation split. Update
 
 ## Notes
 
-- The extracted source images for v1 were 512 pixels on the long edge, but model
-  training transforms are independent. A 512x512 experiment means setting the
-  model transform to 512x512.
 - Keep generated clips, datasets, checkpoints, predictions, and logs under
   `/mnt/t/data` or `/mnt/t/output`; do not commit them to this repo.
+- If the user asks for additional experiments, such as a different input
+  resolution or architecture, keep those experiment details in the run notes or
+  command line rather than encoding them in this static-validation workflow.

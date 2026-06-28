@@ -7,8 +7,5 @@ From recent experiments, we know that a 4-frame temporal classifier works better
 classifier. Our best network so far is tracked in model_registry.yaml. The code for this was a
 slightly modified ImageNet trainer here: /home/atao/vsdevel/public/examples/imagenet/...
 
-There's a new dataset on googdrive, v2. fetch it and go through the dataset creation process, then train a 4-frame temporal model with this to see if our metrics improve. For the time being, i would keep our validation set static and simply add matches to our training set. I also would like to see experiments with higher resolution: 512x512, to see if it helps.
-
-Fresh-agent procedure: use workflows/new_dataset_static_val.md. Keep the v1
-validation source videos frozen, add new v2 matches to train, run the default
-4-frame temporal model, then repeat with IMAGE_HEIGHT=512 IMAGE_WIDTH=512.
+Fresh-agent procedure: use workflows/new_dataset_static_val.md for the static
+validation dataset refresh, then follow the user-requested training experiments.

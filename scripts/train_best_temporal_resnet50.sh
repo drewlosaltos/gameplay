@@ -3,14 +3,17 @@ set -euo pipefail
 
 # Reproduce the current best SkyBall gameplay classifier:
 # ResNet-50 encoder, four 1 Hz frames per window, average pooled embeddings,
-# binary classification head, 224x224 input transform, 10 epoch cosine LR.
+# binary classification head, configurable square/rectangular input transform,
+# 10 epoch cosine LR. Defaults reproduce the current best 224x224 run.
 
 IMAGENET_EXAMPLE_DIR=${IMAGENET_EXAMPLE_DIR:-/home/atao/vsdevel/public/examples/imagenet}
 DSET_DIR=${DSET_DIR:-/mnt/t/data/vball/skyball/gameplay/v1}
 RUN_ROOT=${RUN_ROOT:-/mnt/t/output/trn/skyball_gameplay}
 DATASET_VERSION=${DATASET_VERSION:-$(basename "${DSET_DIR}")}
+IMAGE_HEIGHT=${IMAGE_HEIGHT:-224}
+IMAGE_WIDTH=${IMAGE_WIDTH:-224}
 STAMP=${STAMP:-$(date +%Y%m%d_%H%M%S)}
-RUN_NAME=${RUN_NAME:-${DATASET_VERSION}_resnet50_f4_avg_h224w224_cos10_pre_${STAMP}}
+RUN_NAME=${RUN_NAME:-${DATASET_VERSION}_resnet50_f4_avg_h${IMAGE_HEIGHT}w${IMAGE_WIDTH}_cos10_pre_${STAMP}}
 
 GPUS=${GPUS:-0,1}
 PORT=${PORT:-1234}
@@ -37,7 +40,7 @@ if [[ "${CHECK_GPUS}" == "1" ]] && command -v nvidia-smi >/dev/null 2>&1; then
 fi
 
 OUT_DIR="${RUN_ROOT}/${RUN_NAME}"
-TAG="resnet50_f4_avg_binary_h224w224_cos10_pre"
+TAG="resnet50_f4_avg_binary_h${IMAGE_HEIGHT}w${IMAGE_WIDTH}_cos10_pre"
 CHECKPOINT="${OUT_DIR}/best_${TAG}.pth.tar"
 EVAL_DIR="${OUT_DIR}/eval_${TAG}"
 
@@ -45,6 +48,7 @@ echo "Training SkyBall gameplay temporal model"
 echo "  dataset: ${DSET_DIR}"
 echo "  output:  ${OUT_DIR}"
 echo "  trainer: ${IMAGENET_EXAMPLE_DIR}"
+echo "  image:   ${IMAGE_HEIGHT}x${IMAGE_WIDTH}"
 echo "  gpus:    ${GPUS}"
 
 if [[ "${DRY_RUN}" == "1" ]]; then
@@ -63,8 +67,8 @@ env \
   CONDA_ENV="${CONDA_ENV}" \
   EPOCHS=10 \
   PRETRAINED=1 \
-  IMAGE_HEIGHT=224 \
-  IMAGE_WIDTH=224 \
+  IMAGE_HEIGHT="${IMAGE_HEIGHT}" \
+  IMAGE_WIDTH="${IMAGE_WIDTH}" \
   TEMPORAL_BATCH_SIZE="${TEMPORAL_BATCH_SIZE}" \
   EVAL_BATCH_SIZE="${EVAL_BATCH_SIZE}" \
   WORKERS="${WORKERS}" \

@@ -4,16 +4,21 @@ This repo houses the gameplay classification project: deciding whether frames or
 
 ## Source Data
 
-- Label workbook: `/mnt/t/data/vball/skyball/unified_staging/gameplay.xlsx`
+- Label workbook remote: `googdrive:skyball/datasets/gameplay/<version>.xlsx`
+- Local workbook root: `/mnt/t/data/vball/skyball/gameplay/ground_truth`
 - Raw video root: `/mnt/t/data/vball/skyball/raw_video`
 - Raw video remote: `googdrive:skyball/raw_video`
 - Extracted gameplay dataset root: `/mnt/t/data/vball/skyball/gameplay`
 - Output root: `/mnt/t/output/skyball_gameplay`
 - Training root: `/mnt/t/output/trn/skyball_gameplay`
 
-`gameplay.xlsx` timestamps refer to full raw match videos, not the
+Gameplay workbook timestamps refer to full raw match videos, not the
 `unified_dataset/images_full` play clips. Do not use `images_full` to interpret,
 review, or extract gameplay classification samples from this workbook.
+
+The first Google Drive workbook is named `v1.xlsx`; old local `v0` artifacts are
+legacy names for that first dataset. For new workbooks such as `v2.xlsx`, use
+the Google Drive version name in local outputs.
 
 ## Workflow
 
@@ -35,17 +40,25 @@ review, or extract gameplay classification samples from this workbook.
 4. After approval, extract an ImageNet-style frame dataset under
    `/mnt/t/data/vball/skyball/gameplay/vN`.
 5. Train in stages:
-   - Baseline: ResNet-50, single image, 512x288, binary classification.
-   - Alternative: four-frame, four-second window model.
+   - Current best: pretrained ResNet-50, four-frame, four-second window model,
+     average pooled encoder embeddings, binary classification.
+   - Higher-resolution ablation: repeat the temporal model with a 512x512 model
+     transform.
+   - Baseline: ResNet-50, single image, binary classification.
    - Optional: binary or multiclass heads for either image or window inputs.
+
+For new gameplay versions, read `workflows/new_dataset_static_val.md`. The
+current comparison policy is to keep the validation source videos from `v1`
+static and add new matches to the training split unless the user asks to
+re-split validation.
 
 ## Dataset Contract
 
-For v0, extract actual JPEG images from raw videos into ImageNet-style folders:
+For new versions, extract actual JPEG images from raw videos into ImageNet-style folders:
 
 ```text
-/mnt/t/data/vball/skyball/gameplay/v0/
-  trn/
+/mnt/t/data/vball/skyball/gameplay/vN/
+  train/
     gameplay/
     timeout/
     setbreak/
@@ -126,7 +139,7 @@ as `set break`, `timeout`, `pre-match`, `post-match`, `warmup`, `set_break`,
 `post_match`, and other non-active regions as negative classes. Preserve the
 original class name in manifests so multiclass training can reuse the same data.
 
-Class folder names for v0:
+Class folder names:
 
 - `gameplay`
 - `timeout`

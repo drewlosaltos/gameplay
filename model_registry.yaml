@@ -1,0 +1,25 @@
+# SkyBall gameplay best model registry.
+# Keep only the current best result here; detailed hparams live in the launcher,
+# trainer checkpoint, and metrics JSON.
+
+schema_version: 1
+updated_at: "2026-06-28"
+
+best_model:
+  model_id: resnet50_f4_avg_binary_h224w224_cos10_pre
+  selection_metric: validation best-F1 threshold sweep
+  f1: 0.7896405919661733
+  threshold: 0.9231943488121033
+  confusion: {tn: 2515, fp: 281, fn: 117, tp: 747}
+
+  architecture: resnet50 encoder over 4 frames, average pooled embeddings, binary head
+  dataset: /mnt/t/data/vball/skyball/gameplay/v1
+
+  checkpoint: /mnt/t/output/trn/skyball_gameplay/v0_binary_pre_aug224_cos10_20260628_114342/best_resnet50_f4_avg_binary_h224w224_cos10_pre.pth.tar
+  metrics: /mnt/t/output/trn/skyball_gameplay/v0_binary_pre_aug224_cos10_20260628_114342/eval_resnet50_f4_avg_binary_h224w224_cos10_pre/metrics.json
+  launcher: scripts/train_best_temporal_resnet50.sh
+  network_definition: /home/atao/vsdevel/public/examples/imagenet/main.py::TemporalAveragePoolClassifier
+
+notes:
+  - v1 is currently a symlink to the legacy local v0 extraction.
+  - Use threshold 0.5 for argmax-style visual review; use the listed threshold for leaderboard reporting.

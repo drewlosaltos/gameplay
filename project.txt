@@ -1,0 +1,11 @@
+This repo houses gameplay network and also the gameplay data creation pipeline
+
+The gameplay network is able to look at images from a video and classify whether the images represent
+active volleyball gameplay or not.
+
+From recent experiments, we know that a 4-frame temporal classifier works better than a single frame
+classifier.
+
+Our best network so far is: /mnt/t/output/trn/skyball_gameplay/v0_binary_pre_aug224_cos10_20260628_114342
+The code for this was a slightly modified imagenet trainer here: /home/atao/vsdevel/public/examples/imagenet/...
+

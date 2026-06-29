@@ -108,6 +108,7 @@ def main() -> None:
     parser.add_argument("--window-start", type=int, default=0)
     parser.add_argument("--stride", type=int, default=6)
     parser.add_argument("--max-windows", type=int, default=1)
+    parser.add_argument("--video-max-frames", type=int, default=0)
     parser.add_argument("--threshold", type=float, default=0.50)
     parser.add_argument("--output-json", type=Path, default=None)
     args = parser.parse_args()
@@ -125,8 +126,14 @@ def main() -> None:
     resolution = int(getattr(saved_args, "resolution", 1024))
     window_size = int(getattr(saved_args, "num_frames", 6))
 
-    frames, _fps, _shape = predict_tracks.read_video(str(args.video), max_frames=0)
+    frames, _fps, _shape = predict_tracks.read_video(
+        str(args.video),
+        max_frames=args.video_max_frames,
+    )
     trt_model = predict_tracks.TensorRTTrackingRunner(str(args.engine))
+    trt_batch_size = int(trt_model.input_shape[0])
+    if trt_batch_size < 1:
+        raise RuntimeError(f"Invalid TensorRT batch size: {trt_batch_size}")
 
     keys = [
         "pred_boxes",
@@ -150,9 +157,11 @@ def main() -> None:
         "checkpoint": str(args.checkpoint),
         "engine": str(args.engine),
         "video": str(args.video),
+        "video_max_frames": args.video_max_frames,
         "window_start": args.window_start,
         "stride": args.stride,
         "windows": len(starts),
+        "trt_batch_size": trt_batch_size,
         "threshold": args.threshold,
         "diffs": {},
         "class_counts": {},
@@ -181,51 +190,73 @@ def main() -> None:
     nonfinite_totals = {key: {"pytorch": {}, "tensorrt": {}} for key in keys}
 
     with torch.inference_mode():
-        for start in starts:
-            window_frames = frames[start : start + window_size]
-            torch_samples = predict_tracks.preprocess_window(
-                window_frames,
+        for batch_start in range(0, len(starts), trt_batch_size):
+            batch_starts = starts[batch_start : batch_start + trt_batch_size]
+            batch_windows = [
+                frames[start : start + window_size]
+                for start in batch_starts
+            ]
+            padded_windows = list(batch_windows)
+            while len(padded_windows) < trt_batch_size:
+                padded_windows.append(batch_windows[-1])
+            torch_samples = predict_tracks.preprocess_window_batch(
+                padded_windows,
                 resolution,
                 device,
             )
-            trt_samples = predict_tracks.preprocess_window(
-                window_frames,
+            trt_samples = predict_tracks.preprocess_window_batch_array(
+                padded_windows,
                 resolution,
-                torch.device("cpu"),
             )
             torch_outputs = torch_model(torch_samples)
-            trt_outputs = trt_model(trt_samples)
+            trt_outputs = trt_model.run_array(
+                trt_samples,
+                return_numpy=False,
+                copy_outputs=True,
+            )
 
             for key in keys:
                 if key not in torch_outputs or key not in trt_outputs:
                     continue
-                diff_values[key].append(tensor_stats(torch_outputs[key], trt_outputs[key]))
-                add_counts(nonfinite_totals[key]["pytorch"], nonfinite_by_class(torch_outputs[key]))
-                add_counts(nonfinite_totals[key]["tensorrt"], nonfinite_by_class(trt_outputs[key]))
+                for batch_idx in range(len(batch_windows)):
+                    torch_value = torch_outputs[key][batch_idx : batch_idx + 1]
+                    trt_value = trt_outputs[key][batch_idx : batch_idx + 1]
+                    diff_values[key].append(tensor_stats(torch_value, trt_value))
+                    add_counts(
+                        nonfinite_totals[key]["pytorch"],
+                        nonfinite_by_class(torch_value),
+                    )
+                    add_counts(
+                        nonfinite_totals[key]["tensorrt"],
+                        nonfinite_by_class(trt_value),
+                    )
 
             for key in ["pred_logits", "pred_logits_all_frames"]:
-                add_counts(
-                    count_totals[key]["pytorch"],
-                    class_counts(torch_outputs[key], args.threshold),
-                )
-                add_counts(
-                    count_totals[key]["tensorrt"],
-                    class_counts(trt_outputs[key], args.threshold),
-                )
-                pt_ref = referee_summary(torch_outputs[key])
-                trt_ref = referee_summary(trt_outputs[key])
-                referee_totals[key]["pytorch_ref_winner_count_050"] += int(
-                    pt_ref["ref_winner_count_050"]
-                )
-                referee_totals[key]["pytorch_ref_winner_count_080"] += int(
-                    pt_ref["ref_winner_count_080"]
-                )
-                referee_totals[key]["tensorrt_ref_winner_count_050"] += int(
-                    trt_ref["ref_winner_count_050"]
-                )
-                referee_totals[key]["tensorrt_ref_winner_count_080"] += int(
-                    trt_ref["ref_winner_count_080"]
-                )
+                for batch_idx in range(len(batch_windows)):
+                    torch_value = torch_outputs[key][batch_idx : batch_idx + 1]
+                    trt_value = trt_outputs[key][batch_idx : batch_idx + 1]
+                    add_counts(
+                        count_totals[key]["pytorch"],
+                        class_counts(torch_value, args.threshold),
+                    )
+                    add_counts(
+                        count_totals[key]["tensorrt"],
+                        class_counts(trt_value, args.threshold),
+                    )
+                    pt_ref = referee_summary(torch_value)
+                    trt_ref = referee_summary(trt_value)
+                    referee_totals[key]["pytorch_ref_winner_count_050"] += int(
+                        pt_ref["ref_winner_count_050"]
+                    )
+                    referee_totals[key]["pytorch_ref_winner_count_080"] += int(
+                        pt_ref["ref_winner_count_080"]
+                    )
+                    referee_totals[key]["tensorrt_ref_winner_count_050"] += int(
+                        trt_ref["ref_winner_count_050"]
+                    )
+                    referee_totals[key]["tensorrt_ref_winner_count_080"] += int(
+                        trt_ref["ref_winner_count_080"]
+                    )
 
     for key in keys:
         stats = diff_values.get(key, [])

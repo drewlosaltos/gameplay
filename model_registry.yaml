@@ -1,25 +1,141 @@
 # SkyBall gameplay best model registry.
-# Keep only the current best result here; detailed hparams live in the launcher,
-# trainer checkpoint, and metrics JSON.
+# Keep only the current metric-best result here. The launcher can reproduce the
+# recipe below by passing the listed hparams as environment overrides.
 
 schema_version: 1
-updated_at: "2026-06-28"
+updated_at: "2026-07-19"
 
 best_model:
-  model_id: resnet50_f4_avg_binary_h224w224_cos10_pre
-  selection_metric: validation best-F1 threshold sweep
-  f1: 0.7896405919661733
-  threshold: 0.9231943488121033
-  confusion: {tn: 2515, fp: 281, fn: 117, tp: 747}
+  model_id: v5_siglip_base_f4_avg_h512w512_step4s2_lr1e4_blr5e6_20260719
+  status: production_selected
+  qualification_status: validation_and_full_video_gate_qualified
+  pipeline_status: promoted_skyball-prod-20260719-r1
+  production: true
+  production_release: skyball-prod-20260719-r1
+  selection_metric: safe full-video outside-3-second FP rejection, with combined validation F1 reported jointly
+  f1: 0.9404872032069072
+  threshold: 0.514474093914032
+  confusion: { tn: 7210, fp: 570, fn: 395, tp: 7625 }
 
-  architecture: resnet50 encoder over 4 frames, average pooled embeddings, binary head
-  dataset: /mnt/t/data/vball/skyball/gameplay/v1
+  full_video_gameplay_gate:
+    contract_id: gameplay_gate_eval10_v2
+    status: pass
+    evaluation_matches: 10
+    confirmed_gt_actions: 8848
+    rallies: 1370
+    matched_true_actions: 8318
+    valid_predicted_plays: 1395
+    policy:
+      threshold: 0.2
+      merge_gap_sec: 0.0
+      pad_before_sec: 30.0
+      pad_after_sec: 30.0
+    annotated_gameplay_recall: 1.0
+    confirmed_gt_action_recall: 1.0
+    rally_full_coverage_recall: 1.0
+    matched_true_actions_rejected: 0
+    valid_predicted_plays_rejected: 0
+    outside_3s_action_fp_current: 114
+    outside_3s_action_fp_rejected: 92
+    outside_3s_action_fp_remaining: 22
+    outside_3s_action_fp_rejected_fraction: 0.8070175438596491
+    previous_model_outside_3s_action_fp_rejected: 38
+    absolute_fp_rejection_improvement: 54
+    impact_report: /mnt/t/output/skyball_gameplay/gameplay_gate_eval10_siglip512_v1_20260719/pipeline_fp_impact_tuned_safe_v1/pipeline_fp_impact.json
+    validation_result: /mnt/t/output/skyball_gameplay/gameplay_gate_eval10_siglip512_v1_20260719/pipeline_fp_impact_tuned_safe_v1/validation_gate_result_v2.json
+    selection_caveat: policy selected on the same ten evaluation matches; this is a retrospective non-regression population, not an unbiased unseen-match estimate
 
-  checkpoint: /mnt/t/output/trn/skyball_gameplay/v0_binary_pre_aug224_cos10_20260628_114342/best_resnet50_f4_avg_binary_h224w224_cos10_pre.pth.tar
-  metrics: /mnt/t/output/trn/skyball_gameplay/v0_binary_pre_aug224_cos10_20260628_114342/eval_resnet50_f4_avg_binary_h224w224_cos10_pre/metrics.json
-  launcher: scripts/train_best_temporal_resnet50.sh
-  network_definition: /home/atao/vsdevel/public/examples/imagenet/main.py::TemporalAveragePoolClassifier
+  runtime:
+    onnx_status: validated
+    tensorrt_compatible: true
+    onnx: /mnt/t/output/skyball_gameplay/model_publication_siglip512_20260719/v5_siglip_base_f4_avg_h512w512_step4s2_lr1e4_blr5e6_20260719/model.onnx
+    onnx_sha256: e9291f13193558a5cbadbb9e370106db7125d4e477bcd55022a2203c9550e362
+    onnx_parity_evidence: /mnt/t/output/skyball_gameplay/model_publication_siglip512_20260719/v5_siglip_base_f4_avg_h512w512_step4s2_lr1e4_blr5e6_20260719/evidence/onnx_parity.json
+    tensorrt_build_evidence: /mnt/t/output/skyball_gameplay/model_publication_siglip512_20260719/v5_siglip_base_f4_avg_h512w512_step4s2_lr1e4_blr5e6_20260719/evidence/tensorrt_build.json
+    tensorrt_parity_evidence: /mnt/t/output/skyball_gameplay/model_publication_siglip512_20260719/v5_siglip_base_f4_avg_h512w512_step4s2_lr1e4_blr5e6_20260719/evidence/tensorrt_parity_v2.json
+    input_shape: [batch, 4, 3, 512, 512]
+    input_dtype: float32
+    outputs: [logits, gameplay_score]
+    pipeline_prototype_status: promoted_default
+    pipeline_prototype_report: /home/atao/vsdevel/skyball/pipeline/docs/gameplay_first_prototype_20260719.md
+    measured_trt_scan:
+      gpu: NVIDIA GeForce RTX 5090
+      tensorrt_version: 11.1.0.106
+      precision: fp32
+      batch_size: 8
+      video_duration_seconds: 800.056122102102
+      elapsed_seconds: 16.519644050000352
+      video_seconds_per_wallclock_second: 48.43059085780271
+      threshold_decision_disagreements_vs_pytorch_cache: 0
+      evidence: /mnt/t/output/skyball_pipeline/gameplay_first_prototype_20260719/ncaa005_first24000f_sparse_v1/gameplay_timing.json
+    matched_pipeline_ab:
+      source_frames: 24000
+      admitted_frames: 7952
+      all_frame_gameplay_plus_detector_seconds: 357.695019
+      gameplay_first_gameplay_plus_detector_seconds: 138.20273600000002
+      speedup: 2.588190576777004
+      wall_time_reduction_fraction: 0.6136296882568555
+      matched_gt_actions_all_frame: 51
+      matched_gt_actions_gameplay_first: 51
+      unmatched_predictions_all_frame: 35
+      unmatched_predictions_gameplay_first: 2
+      candidate_run: /mnt/t/output/skyball_pipeline/gameplay_first_prototype_20260719/ncaa005_first24000f_sparse_v1
+      control_run: /mnt/t/output/skyball_pipeline/gameplay_first_prototype_20260719/ncaa005_first24000f_allframes_v1
+
+  architecture: timm SigLIP-Base v2 WebLI encoder over 4 frames, average pooled embeddings, binary head
+  dataset: /mnt/t/data/vball/skyball/gameplay/v5
+  hparams:
+    backbone: vit_base_patch16_siglip_512.v2_webli
+    pretrained: true
+    input_frames: 4
+    label_mode: binary
+    epochs: 4
+    selected_epoch: 3
+    optimizer: adamw
+    head_lr: 0.0001
+    backbone_lr: 0.000005
+    backbone_lr_multiplier: 0.05
+    lr_scheduler: step
+    lr_step_size: 2
+    lr_gamma: 0.1
+    image_size: [512, 512]
+    global_microbatch_size: 64
+    grad_accum_steps: 2
+    effective_global_batch_size: 128
+    amp: true
+    crop_scale_min: 0.65
+    color_jitter: 0.10
+    aug_policy: randaugment
+    rand_augment_ops: 2
+    rand_augment_magnitude: 5
+    random_erasing: 0.1
+    temporal_dropout: 0.1
+    temporal_shared_augment: true
+
+  checkpoint: /mnt/t/output/trn/skyball_gameplay/v5_siglip_base_f4_avg_h512w512_step4s2_lr1e4_blr5e6_20260719/best_siglip_base_f4_avg_binary_h512w512_step4s2_pre_drop010.pth.tar
+  metrics: /mnt/t/output/trn/skyball_gameplay/v5_siglip_base_f4_avg_h512w512_step4s2_lr1e4_blr5e6_20260719/eval_siglip_base_f4_avg_binary_h512w512_step4s2_pre_drop010/metrics.json
+  cohort_metrics: /mnt/t/output/trn/skyball_gameplay/v5_siglip_base_f4_avg_h512w512_step4s2_lr1e4_blr5e6_20260719/eval_siglip_base_f4_avg_binary_h512w512_step4s2_pre_drop010/validation_cohort_metrics.json
+  operating_points: /mnt/t/output/trn/skyball_gameplay/v5_siglip_base_f4_avg_h512w512_step4s2_lr1e4_blr5e6_20260719/eval_siglip_base_f4_avg_binary_h512w512_step4s2_pre_drop010/gameplay_operating_points.json
+  publication_status: published_recommended
+  publication:
+    remote_path: googdrive:skyball/checkpoints/gameplay/v5_siglip_base_f4_avg_h512w512_step4s2_lr1e4_blr5e6_20260719
+    catalog: googdrive:skyball/checkpoints/catalog.json
+    manifest_sha256: 784fb56022b18b79e76386d735a50aea9f0aced1685d212c1abaef46923a88ba
+    published_at: "2026-07-19T10:49:11-07:00"
+  launcher: scripts/train_siglip_temporal.sh
+  network_definition: /home/atao/vsdevel/public/examples/imagenet/main.py::TemporalFeatureAveragePoolClassifier
 
 notes:
-  - v1 is currently a symlink to the legacy local v0 extraction.
+  - >-
+    Selection uses the combined 15,800-window validation population: 3,660
+    frozen v2 windows plus 12,140 expanded v5 windows.
+  - >-
+    At the combined threshold, frozen-v2 F1 is 0.8700683850604944 and
+    expanded-v5 F1 is 0.9498393181500628.
+  - >-
+    Published comparison models remain available on Drive: native-224 SigLIP
+    v5_siglip_base_f4_avg_h224w224_step4s2_lr1e4_blr5e6_20260719 and 512x512
+    ResNet-50 v5_resnet50_f4_avg_h512w512_step4s2_ra2m5_shared_drop01_20260718.
+  - The stored source JPEGs use the current 1024-pixel-long-edge extraction contract.
   - Use threshold 0.5 for argmax-style visual review; use the listed threshold for leaderboard reporting.
+  - The classifier validation threshold and full-video temporal gate threshold serve different purposes and must not be interchanged.

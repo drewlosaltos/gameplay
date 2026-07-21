@@ -123,7 +123,7 @@ best_model:
     manifest_sha256: 784fb56022b18b79e76386d735a50aea9f0aced1685d212c1abaef46923a88ba
     published_at: "2026-07-19T10:49:11-07:00"
   launcher: scripts/train_siglip_temporal.sh
-  network_definition: /home/atao/vsdevel/public/examples/imagenet/main.py::TemporalFeatureAveragePoolClassifier
+  network_definition: /home/atao/vsdevel/skyball/gameplay/skyball_gameplay/modeling.py::TemporalFeatureAveragePoolClassifier
 
 notes:
   - >-

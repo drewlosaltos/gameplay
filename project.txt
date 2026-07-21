@@ -4,8 +4,9 @@ The gameplay network is able to look at images from a video and classify whether
 active volleyball gameplay or not.
 
 From recent experiments, we know that a 4-frame temporal classifier works better than a single-frame
-classifier. Our best network so far is tracked in model_registry.yaml. The code for this was a
-slightly modified ImageNet trainer here: /home/atao/vsdevel/public/examples/imagenet/...
+classifier. Our best network so far is tracked in model_registry.yaml. Training,
+evaluation, and checkpoint-compatible model definitions live in the local
+`skyball_gameplay` package.
 
 Fresh-agent procedure: use workflows/new_dataset_static_val.md for the static
 validation dataset refresh, then follow the user-requested training experiments.

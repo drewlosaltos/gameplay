@@ -29,7 +29,11 @@ different split policy.
 
 This policy makes metrics comparable across dataset refreshes: validation
 changes reflect model or training-data changes, not a new validation
-distribution.
+distribution. If the user requests an expanded validation cohort, retain the
+base validation as a separately reported frozen slice, hold the expanded source
+videos out of training, and report both the frozen slice and combined
+validation population. Bind the added sources and their sampling policy in a
+versioned manifest.
 
 ## Procedure
 

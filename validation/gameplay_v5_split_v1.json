@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "dataset_version": "v5",
+  "workbook": "/mnt/t/data/vball/skyball/unified_staging/gameplay/v5.xlsx",
+  "workbook_sha256": "a2c02b87b434b2a8cd8f24f132f83b4bed6627f35b2491f73c6a16106afe1961",
+  "source_video_count": 355,
+  "sampling_policy": {
+    "train": {
+      "gameplay_stride_sec": 20.0,
+      "negative_stride_sec": 10.0
+    },
+    "v2_fixed": {
+      "gameplay_stride_sec": 20.0,
+      "negative_stride_sec": 1.0
+    },
+    "v5_expanded": {
+      "gameplay_stride_sec": 10.0,
+      "negative_stride_sec": 10.0
+    },
+    "frames_per_window": 4,
+    "frame_interval_sec": 1.0,
+    "long_edge": 1024,
+    "jpeg_quality": 88
+  },
+  "v2_fixed_videos": [
+    "000000_cosmic_dodo.mp4",
+    "000003_haughty_salamander.mp4",
+    "000005_boisterous_quetzal.mp4",
+    "000010_turbulent_walrus.mp4",
+    "000022_woolly_coatimundi.mp4",
+    "000023_kinetic_capybara.mp4",
+    "000030_venomous_hyrax.mp4"
+  ],
+  "expanded_selection": {
+    "count": 20,
+    "cohort_targets": {
+      "v3_youth": 6,
+      "v4_college": 8,
+      "v5_college": 6
+    },
+    "method": "Within each source cohort, sort by gameplay fraction, divide into equal-frequency strata, and select the standardized-feature medoid in each stratum.",
+    "features": [
+      "duration_sec",
+      "gameplay_fraction",
+      "transitions_per_hour",
+      "timeout_fraction",
+      "set_break_fraction"
+    ],
+    "tie_break": "source_video ascending"
+  },
+  "videos": [
+    {"source_video": "000178_haunted_earthworm.mp4", "cohort": "v3_youth", "stratum": 0},
+    {"source_video": "000177_dazzling_manatee.mp4", "cohort": "v3_youth", "stratum": 1},
+    {"source_video": "000166_wandering_nightjar.mp4", "cohort": "v3_youth", "stratum": 2},
+    {"source_video": "000151_ancient_babirusa.mp4", "cohort": "v3_youth", "stratum": 3},
+    {"source_video": "000128_unhinged_eland.mp4", "cohort": "v3_youth", "stratum": 4},
+    {"source_video": "000190_groovy_lion.mp4", "cohort": "v3_youth", "stratum": 5},
+    {"source_video": "004900_agile_dik-dik.mp4", "cohort": "v4_college", "stratum": 0},
+    {"source_video": "004955_resplendent_boar.mp4", "cohort": "v4_college", "stratum": 1},
+    {"source_video": "004947_legendary_kookaburra.mp4", "cohort": "v4_college", "stratum": 2},
+    {"source_video": "004929_grumpy_aye-aye.mp4", "cohort": "v4_college", "stratum": 3},
+    {"source_video": "004961_golden_tapir.mp4", "cohort": "v4_college", "stratum": 4},
+    {"source_video": "004906_cardinal_bandicoot.mp4", "cohort": "v4_college", "stratum": 5},
+    {"source_video": "004926_dazzling_hyrax.mp4", "cohort": "v4_college", "stratum": 6},
+    {"source_video": "004940_euphoric_finch.mp4", "cohort": "v4_college", "stratum": 7},
+    {"source_video": "005030_famished_lynx.mp4", "cohort": "v5_college", "stratum": 0},
+    {"source_video": "005022_spooky_cuttlefish.mp4", "cohort": "v5_college", "stratum": 1},
+    {"source_video": "004986_wandering_bison.mp4", "cohort": "v5_college", "stratum": 2},
+    {"source_video": "004991_clumsy_caracal.mp4", "cohort": "v5_college", "stratum": 3},
+    {"source_video": "004989_outrageous_kea.mp4", "cohort": "v5_college", "stratum": 4},
+    {"source_video": "005002_nebulous_jaguarundi.mp4", "cohort": "v5_college", "stratum": 5}
+  ]
+}

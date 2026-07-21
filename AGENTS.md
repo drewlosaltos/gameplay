@@ -84,9 +84,15 @@ Extraction protocol:
 - Sample four-frame windows.
 - Within each window, sample one frame per second for four seconds.
 - For `gameplay`, start a window every 20 seconds.
-- For non-gameplay classes, start a window every 1 second because these classes
-  are much smaller.
-- Resize extracted images to 512 pixels on the long edge.
+- For legacy datasets, non-gameplay windows may start every 1 second. The v5
+  policy is deliberately sparser and is documented in
+  `workflows/gameplay_v5_dataset.md`: training uses a 10-second non-gameplay
+  stride, frozen v2 validation retains its original 1-second non-gameplay
+  stride, and expanded v5 validation uses a class-independent 10-second
+  stride. Do not apply the training sparsification to frozen v2 validation.
+- Resize extracted images to 1024 pixels on the long edge. Legacy v1/v2
+  datasets extracted before June 28, 2026 may use 512 pixels on the long edge;
+  new 512x512 training ablations should use 1024-long-edge extracted JPEGs.
 - Use PIL Lanczos resampling and reasonable JPEG quality, currently quality 88.
 - Store generated datasets under `/mnt/t/data/vball/skyball/gameplay/vN`, not in
   this repo.

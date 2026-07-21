@@ -20,6 +20,9 @@ from .modeling import load_checkpoint_model
 from .modeling import normalization_for_backbone
 
 
+DEFAULT_PREFETCH_BUDGET_GIB = 8.0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the local checkpoint-evaluation command line."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -28,6 +31,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("-b", "--batch-size", default=256, type=int)
     parser.add_argument("-j", "--workers", default=4, type=int)
+    parser.add_argument(
+        "--prefetch-budget-gib",
+        default=DEFAULT_PREFETCH_BUDGET_GIB,
+        type=float,
+        help="Maximum estimated host RAM for prefetched image tensors.",
+    )
     parser.add_argument("--split", default="val", choices=["trn", "train", "val"])
     parser.add_argument("--eval-unit", default="native", choices=["native", "window"])
     parser.add_argument("--image-size", default=None, type=int, nargs=2)
@@ -248,13 +257,37 @@ def binary_predictions_from_classes(
     return [int(prediction == gameplay_index) for prediction in predictions]
 
 
+def bounded_eval_workers(
+    *,
+    requested_workers: int,
+    batch_size: int,
+    input_frames: int,
+    image_size: Sequence[int],
+    prefetch_budget_gib: float,
+) -> int:
+    """Cap workers so one prefetched float tensor per worker fits the RAM budget."""
+    if requested_workers <= 0:
+        return 0
+    if batch_size <= 0 or input_frames <= 0:
+        raise ValueError("batch size and input frames must be positive")
+    if len(image_size) != 2 or any(int(value) <= 0 for value in image_size):
+        raise ValueError("image size must contain two positive dimensions")
+    if prefetch_budget_gib <= 0:
+        raise ValueError("prefetch budget must be positive")
+    height, width = (int(value) for value in image_size)
+    batch_bytes = batch_size * input_frames * 3 * height * width * 4
+    budget_bytes = int(prefetch_budget_gib * 1024**3)
+    budget_workers = max(1, budget_bytes // batch_bytes)
+    return min(requested_workers, budget_workers)
+
+
 def evaluate(args: argparse.Namespace) -> dict[str, Any]:
     """Run native/window evaluation and write metrics and optional predictions."""
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    raw_checkpoint = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
     use_accel = not args.no_accel and torch.accelerator.is_available()
     device = torch.accelerator.current_accelerator() if use_accel else torch.device("cpu")
     model, metadata = load_checkpoint_model(args.checkpoint, device)
+    raw_checkpoint = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
     model_input_frames = int(metadata["input_frames"])
     label_mode = str(metadata["label_mode"])
     classes = list(raw_checkpoint.get("classes") or load_classes(args.data, label_mode)[0])
@@ -262,6 +295,7 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
     image_size = args.image_size or raw_checkpoint.get("image_size")
     mean = raw_checkpoint.get("normalization_mean")
     std = raw_checkpoint.get("normalization_std")
+    del raw_checkpoint
     if mean is None or std is None:
         mean, std = normalization_for_backbone(str(metadata["timm_model"]))
     if image_size is None:
@@ -291,12 +325,29 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
         label_mode,
         transform,
     )
+    eval_workers = bounded_eval_workers(
+        requested_workers=args.workers,
+        batch_size=args.batch_size,
+        input_frames=eval_input_frames,
+        image_size=image_size or [224, 224],
+        prefetch_budget_gib=args.prefetch_budget_gib,
+    )
+    if eval_workers < args.workers:
+        print(
+            f"Capping evaluation workers from {args.workers} to {eval_workers} "
+            f"for a {args.prefetch_budget_gib:g} GiB prefetch budget",
+            flush=True,
+        )
+    loader_options: dict[str, Any] = {}
+    if eval_workers > 0:
+        loader_options["prefetch_factor"] = 1
     loader = torch.utils.data.DataLoader(
         dataset,
         batch_size=args.batch_size,
         shuffle=False,
-        num_workers=args.workers,
+        num_workers=eval_workers,
         pin_memory=use_accel,
+        **loader_options,
     )
     y_true: list[int] = []
     y_pred: list[int] = []

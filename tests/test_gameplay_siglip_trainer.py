@@ -11,6 +11,7 @@ from torch import nn
 from torchvision import transforms
 
 from skyball_gameplay import data as gameplay_data
+from skyball_gameplay import evaluation
 from skyball_gameplay import modeling
 from skyball_gameplay import training
 
@@ -126,3 +127,16 @@ def test_gradient_accumulation_steps_on_boundaries_and_final_batch() -> None:
 
     assert decisions == [False, True, False, True, True]
     assert divisors == [2, 2, 2, 2, 1]
+
+
+def test_evaluator_caps_large_temporal_batch_prefetch() -> None:
+    """A 512-pixel temporal batch must not queue sixteen multi-GiB tensors."""
+    workers = evaluation.bounded_eval_workers(
+        requested_workers=16,
+        batch_size=128,
+        input_frames=4,
+        image_size=[512, 512],
+        prefetch_budget_gib=8.0,
+    )
+
+    assert workers == 5

@@ -1,0 +1,110 @@
+{
+    "schema_version": 1,
+    "contract_id": "gameplay_gate_eval10_v2",
+    "description": "Joint safety and effectiveness non-regression gate for gameplay R&D on the fixed ten-match SkyBall population.",
+    "selection_rule": "First require complete gameplay/action/rally retention with zero rejected matched actions or valid plays; among safe policies maximize outside-3-second action FP rejection. Report classifier validation F1 alongside this gate.",
+    "target_false_positive_definition": "An unmatched predicted action more than 3 seconds from every confirmed synchronized GT action.",
+    "baseline_model_id": "v5_siglip_base_f4_avg_h512w512_step4s2_lr1e4_blr5e6_20260719",
+    "baseline_policy": {
+        "threshold": 0.2,
+        "merge_gap_sec": 0.0,
+        "pad_before_sec": 30.0,
+        "pad_after_sec": 30.0
+    },
+    "population_checks": [
+        {
+            "id": "matches",
+            "path": "per_match",
+            "operator": "length_eq",
+            "value": 10
+        },
+        {
+            "id": "events",
+            "path": "aggregate.gameplay.events",
+            "operator": "eq",
+            "value": 8848
+        },
+        {
+            "id": "rallies",
+            "path": "aggregate.gameplay.rallies",
+            "operator": "eq",
+            "value": 1370
+        },
+        {
+            "id": "target_fp_population",
+            "path": "aggregate.outside_gt_event_margin_action_false_positives.current",
+            "operator": "eq",
+            "value": 114
+        },
+        {
+            "id": "matched_actions",
+            "path": "aggregate.matched_true_actions.current",
+            "operator": "eq",
+            "value": 8318
+        },
+        {
+            "id": "valid_predicted_plays",
+            "path": "aggregate.valid_predicted_plays.current",
+            "operator": "eq",
+            "value": 1395
+        }
+    ],
+    "metric_checks": [
+        {
+            "id": "gameplay_seconds",
+            "label": "annotated gameplay seconds covered",
+            "kind": "scalar",
+            "path": "aggregate.gameplay.annotated_gameplay_recall",
+            "operator": "min",
+            "value": 1.0,
+            "tolerance": 1e-09
+        },
+        {
+            "id": "confirmed_actions",
+            "label": "confirmed GT actions covered",
+            "kind": "scalar",
+            "path": "aggregate.gameplay.event_recall",
+            "operator": "min",
+            "value": 1.0,
+            "tolerance": 1e-09
+        },
+        {
+            "id": "rallies",
+            "label": "rallies fully covered",
+            "kind": "scalar",
+            "path": "aggregate.gameplay.rally_full_coverage_recall",
+            "operator": "min",
+            "value": 1.0,
+            "tolerance": 1e-09
+        },
+        {
+            "id": "outside_fp_rejection",
+            "label": "outside-3-second action FP rejected",
+            "kind": "ratio",
+            "numerator_path": "aggregate.outside_gt_event_margin_action_false_positives.rejected",
+            "denominator_path": "aggregate.outside_gt_event_margin_action_false_positives.current",
+            "operator": "min",
+            "value": 0.8070175438596491,
+            "minimum_numerator": 92,
+            "tolerance": 1e-09
+        },
+        {
+            "id": "matched_action_safety",
+            "label": "matched true actions rejected",
+            "kind": "scalar",
+            "path": "aggregate.matched_true_actions.rejected",
+            "operator": "max",
+            "value": 0,
+            "tolerance": 0
+        },
+        {
+            "id": "valid_play_safety",
+            "label": "valid predicted plays rejected",
+            "kind": "scalar",
+            "path": "aggregate.valid_predicted_plays.rejected",
+            "operator": "max",
+            "value": 0,
+            "tolerance": 0
+        }
+    ]
+}

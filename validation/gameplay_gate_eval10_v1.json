@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "contract_id": "gameplay_gate_eval10_v1",
+  "description": "Five-stat non-regression gate for conservative gameplay gating on the ten SkyBall evaluation matches.",
+  "target_false_positive_definition": "An unmatched predicted action more than 3 seconds from every confirmed synchronized GT action.",
+  "baseline_policy": {
+    "threshold": 0.8,
+    "merge_gap_sec": 90.0,
+    "pad_before_sec": 10.0,
+    "pad_after_sec": 10.0
+  },
+  "population_checks": [
+    {
+      "id": "matches",
+      "path": "per_match",
+      "operator": "length_eq",
+      "value": 10
+    },
+    {
+      "id": "events",
+      "path": "aggregate.gameplay.events",
+      "operator": "eq",
+      "value": 8848
+    },
+    {
+      "id": "rallies",
+      "path": "aggregate.gameplay.rallies",
+      "operator": "eq",
+      "value": 1370
+    },
+    {
+      "id": "target_fp_population",
+      "path": "aggregate.outside_gt_event_margin_action_false_positives.current",
+      "operator": "eq",
+      "value": 114
+    },
+    {
+      "id": "matched_actions",
+      "path": "aggregate.matched_true_actions.current",
+      "operator": "eq",
+      "value": 8318
+    }
+  ],
+  "metric_checks": [
+    {
+      "id": "gameplay_seconds",
+      "label": "annotated gameplay seconds covered",
+      "kind": "scalar",
+      "path": "aggregate.gameplay.annotated_gameplay_recall",
+      "operator": "min",
+      "value": 1.0,
+      "tolerance": 1e-09
+    },
+    {
+      "id": "confirmed_actions",
+      "label": "confirmed GT actions covered",
+      "kind": "scalar",
+      "path": "aggregate.gameplay.event_recall",
+      "operator": "min",
+      "value": 1.0,
+      "tolerance": 1e-09
+    },
+    {
+      "id": "rallies",
+      "label": "rallies fully covered",
+      "kind": "scalar",
+      "path": "aggregate.gameplay.rally_full_coverage_recall",
+      "operator": "min",
+      "value": 1.0,
+      "tolerance": 1e-09
+    },
+    {
+      "id": "outside_fp_rejection",
+      "label": "outside-3-second action FP rejected",
+      "kind": "ratio",
+      "numerator_path": "aggregate.outside_gt_event_margin_action_false_positives.rejected",
+      "denominator_path": "aggregate.outside_gt_event_margin_action_false_positives.current",
+      "operator": "min",
+      "value": 0.3333333333333333,
+      "minimum_numerator": 38,
+      "tolerance": 1e-09
+    },
+    {
+      "id": "matched_action_safety",
+      "label": "matched true actions rejected",
+      "kind": "scalar",
+      "path": "aggregate.matched_true_actions.rejected",
+      "operator": "max",
+      "value": 0,
+      "tolerance": 0
+    }
+  ]
+}

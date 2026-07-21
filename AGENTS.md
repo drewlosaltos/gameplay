@@ -172,6 +172,32 @@ zones around labeled transitions:
 - Check `nvidia-smi` before launching GPU training.
 - Use tmux for long-running training.
 
+## Gameplay Gate Validation
+
+- Use `workflows/gameplay_gate_validation.md` for full-video gameplay-gating
+  studies against the ten SkyBall evaluation matches.
+- The canonical joint safety/effectiveness non-regression contract is
+  `validation/gameplay_gate_eval10_v2.json`; apply it with
+  `scripts/validate_gameplay_gate.py` to the report produced by
+  `scripts/evaluate_gameplay_pipeline_fp_impact.py`.
+- Treat full-video gate safety and target-FP rejection as the primary gameplay
+  R&D criteria. First require 100% annotated-gameplay, confirmed-action, and
+  full-rally retention plus zero rejected matched actions or valid plays. Among
+  policies meeting every safety constraint, maximize rejection of target
+  false positives. Report combined-validation gameplay F1 alongside the gate;
+  classifier F1 alone cannot qualify or recommend a model.
+- The target false-positive definition is an unmatched predicted action more
+  than three seconds from every confirmed synchronized GT action. Do not use
+  all unmatched predictions as the non-gameplay FP denominator.
+- Treat changed match membership, GT action/rally counts, target-FP count, or
+  matched-action/valid-play count as a new validation population. Create a new
+  versioned contract instead of weakening the existing gate.
+- Every recommended model entry in `model_registry.yaml` must record gameplay
+  F1, the selected temporal policy, all safety recalls/counts, target FP
+  current/rejected/remaining counts and fraction, and evidence paths.
+- This gate is currently retrospective and standalone. It does not authorize
+  gameplay integration or changes in the production pipeline.
+
 ## Skills
 
 - Use `$skyball-gameplay-dataset` for review clip generation and manifest dataset construction.

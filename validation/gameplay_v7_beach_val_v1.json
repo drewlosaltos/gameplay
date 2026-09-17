@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "dataset_version": "v7",
+  "domain": "beach_volleyball",
+  "split": "val",
+  "selection_method": "deterministic source-video class-balance selection",
+  "seed": 20260723,
+  "val_fraction": 0.2,
+  "videos": [
+    "001980_breezy_takin",
+    "002495_bumbling_babirusa",
+    "003088_caffeinated_piranha",
+    "003318_capricious_bowerbird",
+    "004038_charming_meerkat",
+    "2023-07-31-W-Montreal-Flint-Scoles-vs-Mel-Brandie-401472",
+    "2023-11-16-W-ChiangMai-Hladun-Lazarenko-vs-Yabumi-Tsubouchi-460338",
+    "2023-11-17-W-ChiangMai-Shiba-Maruyama-vs-Lahti-Ahtiainen-461039",
+    "2024-05-31-M-StareJablonki-Diaz-Alayo-vs-Krattiger-Breer-509641"
+  ]
+}

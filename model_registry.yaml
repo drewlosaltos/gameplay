@@ -1,9 +1,9 @@
 # SkyBall gameplay best model registry.
-# Keep only the current metric-best result here. The launcher can reproduce the
-# recipe below by passing the listed hparams as environment overrides.
+# Track the general model, domain specialists, and qualified indoor successor.
+# Training recipes and their separate qualification scopes are documented in README.md.
 
-schema_version: 1
-updated_at: "2026-07-19"
+schema_version: 2
+updated_at: "2026-09-17"
 
 best_model:
   model_id: v5_siglip_base_f4_avg_h512w512_step4s2_lr1e4_blr5e6_20260719
@@ -125,6 +125,109 @@ best_model:
   launcher: scripts/train_siglip_temporal.sh
   network_definition: /home/atao/vsdevel/skyball/gameplay/skyball_gameplay/modeling.py::TemporalFeatureAveragePoolClassifier
 
+domain_models:
+  beach:
+    model_id: v7_beach_siglip512_prod_finetune_gpu0_20260723
+    status: production
+    qualification_status: beach_validation_approved_by_user
+    pipeline_status: production_model_not_yet_integrated
+    production: true
+    production_scope: beach_volleyball
+    production_release: skyball-beach-prod-20260724-r1
+    selection_metric: held-out beach validation F1 at the fixed 0.5 threshold
+    checkpoint_selection_metric: validation accuracy (epoch 3); F1 reported by standalone evaluation
+    threshold: 0.5
+    accuracy: 0.9306880964339528
+    balanced_accuracy: 0.9312771998323204
+    precision: 0.9463937621832359
+    recall: 0.9212523719165086
+    f1: 0.9336538461538463
+    roc_auc: 0.9761421145040796
+    confusion: { tn: 882, fp: 55, fn: 83, tp: 971 }
+
+    architecture: timm SigLIP-Base v2 WebLI encoder over 4 frames, average pooled embeddings, binary head
+    dataset: /mnt/t/data/vball/skyball/gameplay/v7
+    validation:
+      domain: beach_volleyball
+      source_video_split: held_out
+      population_videos: 47
+      train_videos: 38
+      validation_videos: 9
+      validation_windows: 1991
+      population_manifest: /home/atao/vsdevel/skyball/gameplay/validation/gameplay_v7_beach_population_v1.json
+      validation_manifest: /home/atao/vsdevel/skyball/gameplay/validation/gameplay_v7_beach_val_v1.json
+      dataset_audit: /mnt/t/output/skyball_gameplay/v7_beach_build_finetune_20260723/dataset_validation.json
+      result_record: /home/atao/vsdevel/skyball/gameplay/validation/gameplay_v7_beach_finetune_v1.json
+      baseline:
+        model_id: v5_siglip_base_f4_avg_h512w512_step4s2_lr1e4_blr5e6_20260719
+        accuracy: 0.7553992968357609
+        f1: 0.7170249854735621
+        metrics: /mnt/t/output/skyball_gameplay/v7_beach_build_finetune_20260723/prod_checkpoint_beach_val/metrics.json
+      selected_model:
+        accuracy_improvement: 0.1752887995981919
+        f1_improvement: 0.2166288606802842
+        metrics: /mnt/t/output/trn/skyball_gameplay/v7_beach_siglip512_prod_finetune_gpu0_20260723/eval_siglip_base_f4_avg_binary_h512w512_step4s2_pre_drop010/metrics.json
+        cohort_metrics: /mnt/t/output/trn/skyball_gameplay/v7_beach_siglip512_prod_finetune_gpu0_20260723/eval_siglip_base_f4_avg_binary_h512w512_step4s2_pre_drop010/validation_cohort_metrics.json
+
+    full_video_gameplay_gate:
+      status: not_run_for_beach_domain
+      contract_id: null
+      temporal_policy: null
+      annotated_gameplay_recall: null
+      confirmed_gt_action_recall: null
+      rally_full_coverage_recall: null
+      matched_true_actions_rejected: null
+      valid_predicted_plays_rejected: null
+      outside_3s_action_fp_current: null
+      outside_3s_action_fp_rejected: null
+      outside_3s_action_fp_remaining: null
+      outside_3s_action_fp_rejected_fraction: null
+      scope_note: Explicitly selected by the user as the beach-domain production model; this does not replace or weaken the canonical gate for the general production model.
+
+    runtime:
+      checkpoint_format: pytorch
+      portable_runtime_status: not_built
+      input_shape: [batch, 4, 3, 512, 512]
+      input_dtype: float32
+      outputs: [logits]
+
+    publication_status: published_production
+    publication:
+      remote_path: googdrive:skyball/checkpoints/gameplay/v7_beach_siglip512_prod_finetune_gpu0_20260723
+      catalog: googdrive:skyball/checkpoints/catalog.json
+      catalog_pointer: recommended_by_domain.beach_volleyball.gameplay
+      manifest_sha256: e1c7e015431902114f8adadf78afebff72f0cb6569b6c4531cf80c52766dfc96
+      checkpoint_sha256: 9ebb4ee8f15218526d41622a2200abed5052f0e0cc274ead861dd646b69400a3
+      published_at: "2026-07-24T11:05:07-07:00"
+      artifact_format: pytorch_checkpoint_with_validation_evidence
+
+    hparams:
+      backbone: vit_base_patch16_siglip_512.v2_webli
+      pretrained_from_production_checkpoint: true
+      input_frames: 4
+      label_mode: binary
+      epochs: 4
+      selected_epoch: 3
+      optimizer: adamw
+      head_lr: 0.0001
+      backbone_lr_multiplier: 0.05
+      lr_scheduler: step
+      lr_step_size: 2
+      lr_gamma: 0.1
+      image_size: [512, 512]
+      train_geometry: random_crop
+      crop_scale_min: 0.65
+      augmentation: shared RandAugment (2 ops, magnitude 5), color jitter 0.1, erasing 0.1
+      global_microbatch_size: 16
+      grad_accum_steps: 8
+      effective_global_batch_size: 128
+
+    initialized_from: /mnt/t/output/trn/skyball_gameplay/v5_siglip_base_f4_avg_h512w512_step4s2_lr1e4_blr5e6_20260719/best_siglip_base_f4_avg_binary_h512w512_step4s2_pre_drop010.pth.tar
+    checkpoint: /mnt/t/output/trn/skyball_gameplay/v7_beach_siglip512_prod_finetune_gpu0_20260723/best_siglip_base_f4_avg_binary_h512w512_step4s2_pre_drop010.pth.tar
+    checkpoint_sha256: 9ebb4ee8f15218526d41622a2200abed5052f0e0cc274ead861dd646b69400a3
+    launcher: scripts/run_v7_beach_finetune.sh
+    network_definition: /home/atao/vsdevel/skyball/gameplay/skyball_gameplay/modeling.py::TemporalFeatureAveragePoolClassifier
+
 notes:
   - >-
     Selection uses the combined 15,800-window validation population: 3,660
@@ -138,6 +241,7 @@ notes:
     ResNet-50 v5_resnet50_f4_avg_h512w512_step4s2_ra2m5_shared_drop01_20260718.
   - The stored source JPEGs use the current 1024-pixel-long-edge extraction contract.
   - Use threshold 0.5 for argmax-style visual review; use the listed threshold for leaderboard reporting.
+  - The beach-domain production selection is a PyTorch checkpoint and does not yet have ONNX/TensorRT publication artifacts.
   - The classifier validation threshold and full-video temporal gate threshold serve different purposes and must not be interchanged.
 
 # Selected indoor successor; current deployed entry remains above until pipeline acceptance.

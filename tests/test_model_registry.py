@@ -41,3 +41,32 @@ def test_best_model_records_portable_runtime_assets() -> None:
     assert runtime["input_shape"] == ["batch", 4, 3, 512, 512]
     assert Path(runtime["onnx"]).is_absolute()
     assert Path(runtime["onnx_parity_evidence"]).is_absolute()
+
+
+def test_beach_domain_model_records_production_selection_and_evidence() -> None:
+    """Beach routing should resolve the explicitly approved v7 specialist."""
+    registry = yaml.safe_load(REGISTRY_PATH.read_text(encoding="utf-8"))
+    model = registry["domain_models"]["beach"]
+
+    assert model["status"] == "production"
+    assert model["production"] is True
+    assert model["production_scope"] == "beach_volleyball"
+    assert model["pipeline_status"] == "production_model_not_yet_integrated"
+    assert model["threshold"] == 0.5
+    assert model["f1"] == 0.9336538461538463
+    assert model["validation"]["validation_videos"] == 9
+    assert model["validation"]["validation_windows"] == 1991
+    assert model["full_video_gameplay_gate"]["status"] == "not_run_for_beach_domain"
+    assert model["publication_status"] == "published_production"
+    assert (
+        model["publication"]["remote_path"]
+        == "googdrive:skyball/checkpoints/gameplay/"
+        "v7_beach_siglip512_prod_finetune_gpu0_20260723"
+    )
+    assert (
+        model["publication"]["catalog_pointer"]
+        == "recommended_by_domain.beach_volleyball.gameplay"
+    )
+    assert len(model["publication"]["manifest_sha256"]) == 64
+    assert Path(model["checkpoint"]).is_absolute()
+    assert len(model["checkpoint_sha256"]) == 64

@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "result_id": "gameplay_v7_beach_finetune_v1",
+  "completed_at": "2026-07-23T22:18:59-07:00",
+  "status": "completed",
+  "scope": "beach-only gameplay classifier adaptation and held-out validation",
+  "qualification_status": "production_selected_for_beach_domain_by_user",
+  "production_registry_updated": true,
+  "production_scope": "beach_volleyball",
+  "production_release": "skyball-beach-prod-20260724-r1",
+  "production_registry_caveat": "This checkpoint is the beach-domain production model. It does not replace the general production model and has not been evaluated with the canonical full-video gameplay gate.",
+  "publication": {
+    "status": "published_production",
+    "published_at": "2026-07-24T11:05:07-07:00",
+    "remote_path": "googdrive:skyball/checkpoints/gameplay/v7_beach_siglip512_prod_finetune_gpu0_20260723",
+    "catalog": "googdrive:skyball/checkpoints/catalog.json",
+    "catalog_pointer": "recommended_by_domain.beach_volleyball.gameplay",
+    "artifact_manifest_sha256": "e1c7e015431902114f8adadf78afebff72f0cb6569b6c4531cf80c52766dfc96",
+    "checkpoint_sha256": "9ebb4ee8f15218526d41622a2200abed5052f0e0cc274ead861dd646b69400a3",
+    "artifact_format": "pytorch_checkpoint_with_validation_evidence",
+    "pipeline_status": "production_model_not_yet_integrated"
+  },
+  "source": {
+    "workbook": "/mnt/t/data/vball/skyball/gameplay/ground_truth/v7.xlsx",
+    "workbook_sha256": "9b10fb3bfae798591a06a865383ff43605100ffd9999dd2b073b7f7690af9c16",
+    "selection_rule": "source videos present in v7.xlsx and absent from v6.xlsx",
+    "video_count": 47,
+    "raw_video_subfolder": "beach_endline",
+    "drive_reconciliation": {
+      "matching_file_count": 47,
+      "difference_count": 0,
+      "missing_destination_count": 0,
+      "missing_source_count": 0
+    },
+    "duration_validation": {
+      "video_count": 47,
+      "mismatch_count": 0,
+      "evidence": "/mnt/t/output/skyball_gameplay/v7_beach_build_finetune_20260723/raw_duration_validation/raw_video_duration_validation.json"
+    }
+  },
+  "dataset": {
+    "root": "/mnt/t/data/vball/skyball/gameplay/v7",
+    "population_manifest": "/home/atao/vsdevel/skyball/gameplay/validation/gameplay_v7_beach_population_v1.json",
+    "validation_manifest": "/home/atao/vsdevel/skyball/gameplay/validation/gameplay_v7_beach_val_v1.json",
+    "split_seed": 20260723,
+    "train_video_count": 38,
+    "validation_video_count": 9,
+    "train_window_count": 7454,
+    "validation_window_count": 1991,
+    "window_count": 9445,
+    "image_count": 37780,
+    "long_edge": 1024,
+    "jpeg_quality": 88,
+    "train_binary_windows": {
+      "gameplay": 4148,
+      "non_gameplay": 3306
+    },
+    "validation_binary_windows": {
+      "gameplay": 1054,
+      "non_gameplay": 937
+    },
+    "source_split_leakage_count": 0,
+    "missing_image_count": 0,
+    "summary": "/mnt/t/data/vball/skyball/gameplay/v7/metadata/summary.json",
+    "audit": "/mnt/t/output/skyball_gameplay/v7_beach_build_finetune_20260723/dataset_validation.json"
+  },
+  "training": {
+    "gpu": 0,
+    "architecture": "timm vit_base_patch16_siglip_512.v2_webli, four-frame average-pooled temporal binary classifier",
+    "image_size": [
+      512,
+      512
+    ],
+    "epochs": 4,
+    "validation_accuracy_by_epoch": [
+      0.9121044701155199,
+      0.9276745354093421,
+      0.9301858362631843,
+      0.9291813159216474
+    ],
+    "selected_epoch_zero_based": 2,
+    "selected_epoch_one_based": 3,
+    "selected_training_validation_accuracy": 0.9301858362631843,
+    "microbatch_size": 16,
+    "gradient_accumulation_steps": 8,
+    "effective_batch_size": 128,
+    "optimizer": "adamw",
+    "head_learning_rate": 0.0001,
+    "backbone_learning_rate_multiplier": 0.05,
+    "source_production_checkpoint": "/mnt/t/output/trn/skyball_gameplay/v5_siglip_base_f4_avg_h512w512_step4s2_lr1e4_blr5e6_20260719/best_siglip_base_f4_avg_binary_h512w512_step4s2_pre_drop010.pth.tar",
+    "source_production_checkpoint_sha256": "5abb164c2792fa37b96211295bc8f43e45cb9ee43eceda36a3d1a9104c1cf6f1",
+    "checkpoint": "/mnt/t/output/trn/skyball_gameplay/v7_beach_siglip512_prod_finetune_gpu0_20260723/best_siglip_base_f4_avg_binary_h512w512_step4s2_pre_drop010.pth.tar",
+    "checkpoint_sha256": "9ebb4ee8f15218526d41622a2200abed5052f0e0cc274ead861dd646b69400a3"
+  },
+  "held_out_validation_at_threshold_0_5": {
+    "count": 1991,
+    "production_baseline": {
+      "accuracy": 0.7553992968357609,
+      "balanced_accuracy": 0.7660136006755786,
+      "precision": 0.9250374812593704,
+      "recall": 0.5853889943074004,
+      "f1": 0.7170249854735621,
+      "roc_auc": 0.9031964422771208,
+      "confusion": {
+        "tn": 887,
+        "fp": 50,
+        "fn": 437,
+        "tp": 617
+      },
+      "metrics": "/mnt/t/output/skyball_gameplay/v7_beach_build_finetune_20260723/prod_checkpoint_beach_val/metrics.json"
+    },
+    "beach_finetuned": {
+      "accuracy": 0.9306880964339528,
+      "balanced_accuracy": 0.9312771998323204,
+      "precision": 0.9463937621832359,
+      "recall": 0.9212523719165086,
+      "f1": 0.9336538461538463,
+      "roc_auc": 0.9761421145040796,
+      "confusion": {
+        "tn": 882,
+        "fp": 55,
+        "fn": 83,
+        "tp": 971
+      },
+      "metrics": "/mnt/t/output/trn/skyball_gameplay/v7_beach_siglip512_prod_finetune_gpu0_20260723/eval_siglip_base_f4_avg_binary_h512w512_step4s2_pre_drop010/metrics.json",
+      "cohort_metrics": "/mnt/t/output/trn/skyball_gameplay/v7_beach_siglip512_prod_finetune_gpu0_20260723/eval_siglip_base_f4_avg_binary_h512w512_step4s2_pre_drop010/validation_cohort_metrics.json"
+    },
+    "absolute_delta": {
+      "accuracy": 0.1752887995981919,
+      "balanced_accuracy": 0.1652635991567418,
+      "precision": 0.0213562809238655,
+      "recall": 0.3358633776091082,
+      "f1": 0.2166288606802842,
+      "roc_auc": 0.0729456722269588
+    }
+  },
+  "review_clips": {
+    "video_count": 4,
+    "sample_count": 48,
+    "summary": "/mnt/t/output/skyball_gameplay/review_clips/v7_beach_20260723/summary.json"
+  },
+  "provenance": {
+    "repository_base_commit": "b41e876dfec0bbd45a24a0819cf76efa3d78430e",
+    "repository_worktree_modified_for_run": true,
+    "launcher": "/home/atao/vsdevel/skyball/gameplay/scripts/run_v7_beach_finetune.sh",
+    "control_log": "/mnt/t/output/skyball_gameplay/v7_beach_build_finetune_20260723/control.log",
+    "completion_sentinel": "/mnt/t/output/skyball_gameplay/v7_beach_build_finetune_20260723/completed.sentinel"
+  }
+}

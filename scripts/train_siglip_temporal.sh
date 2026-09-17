@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Four-frame SigLIP-Base gameplay experiment. The augmentation and short
+# Historical v5 / beach four-frame SigLIP recipe. For new indoor training use
+# train_two_stage_fullframe.py. The augmentation and short
 # step schedule match the v5 ResNet-50 research SOTA; AdamW and the conservative
 # encoder learning rate come from the successful jersey SigLIP recipe.
 
@@ -84,6 +85,8 @@ CUDA_VISIBLE_DEVICES="${GPUS}" conda run --no-capture-output -n "${CONDA_ENV}" \
     --input-frames 4 \
     --label-mode binary \
     --image-size "${IMAGE_HEIGHT}" "${IMAGE_WIDTH}" \
+    --train-geometry random_crop \
+    --selection-metric accuracy \
     --crop-scale-min 0.65 \
     --color-jitter 0.10 \
     --aug-policy randaugment \

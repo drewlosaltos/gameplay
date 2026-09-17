@@ -261,8 +261,8 @@ def load_prediction_rows(dataset_root: Path, predictions: Path) -> list[dict]:
             index = int(prediction["index"])
             record = records[index]
             cohort = record.get("validation_cohort")
-            if cohort not in {"v2_fixed", "v5_expanded"}:
-                raise ValueError(f"Unexpected validation cohort for index {index}: {cohort!r}")
+            if not isinstance(cohort, str) or not cohort:
+                raise ValueError(f"Missing validation cohort for index {index}: {cohort!r}")
             if prediction.get("window_id") and prediction["window_id"] != record.get("window_id"):
                 raise ValueError(f"Prediction/metadata window mismatch at index {index}")
             rows.append(

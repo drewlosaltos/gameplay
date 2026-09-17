@@ -84,6 +84,7 @@ def test_staged_sampling_marks_validation_cohorts_without_split_leakage() -> Non
         legacy_gameplay_stride=20.0,
         legacy_negative_stride=1.0,
         expanded_val_stride=10.0,
+        legacy_val_cohort="beach_v7",
     )
 
     populations = {
@@ -92,7 +93,7 @@ def test_staged_sampling_marks_validation_cohorts_without_split_leakage() -> Non
     }
     assert populations == {
         "train": ("train", None),
-        "legacy": ("val", "v2_fixed"),
+        "legacy": ("val", "beach_v7"),
         "expanded": ("val", "v5_expanded"),
     }
 
@@ -269,3 +270,13 @@ def test_reuse_legacy_images_rejects_incompatible_resolution(tmp_path: Path) -> 
             long_edge=1024,
             jpeg_quality=88,
         )
+
+
+def test_beach_labels_are_preserved_as_binary_non_gameplay_classes() -> None:
+    """Beach-only stoppage labels should map into an existing class folder."""
+    for label in [
+        "side switch",
+        "court maintenance break",
+        "referee mark inspection",
+    ]:
+        assert MODULE.class_dir_for(label) == "timeout"

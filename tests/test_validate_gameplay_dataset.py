@@ -110,3 +110,75 @@ def test_validate_dataset_rejects_split_leakage(tmp_path: Path) -> None:
         assert "multiple populations" in str(exc)
     else:
         raise AssertionError("Expected split leakage to fail")
+
+
+def test_validate_source_held_out_dataset_checks_beach_split_contract(tmp_path: Path) -> None:
+    """A beach-only source-held-out dataset should pass the generic audit."""
+    dataset = tmp_path / "v7"
+    metadata = dataset / "metadata"
+    metadata.mkdir(parents=True)
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    windows = []
+    images = []
+    for video, split, cohort in [
+        ("beach_train.mp4", "train", None),
+        ("beach_val.mp4", "val", "beach_v7"),
+    ]:
+        raw_path = raw / video
+        raw_path.touch()
+        stem = Path(video).stem
+        frame_paths = [f"{split}/gameplay/{stem}_s{index}.jpg" for index in range(4)]
+        window = {
+            "window_id": f"{stem}_w000000_t0000000000",
+            "source_video": video,
+            "video_id": stem,
+            "split": split,
+            "validation_cohort": cohort,
+            "class_name": "gameplay",
+            "binary_label": 1,
+            "start_sec": 0.0,
+            "end_sec": 4.0,
+            "times_sec": [0.0, 1.0, 2.0, 3.0],
+            "frame_paths": frame_paths,
+            "stable_start_sec": 0.0,
+            "stable_end_sec": 4.0,
+            "start_exclude_sec": 0.0,
+            "end_exclude_sec": 0.0,
+            "boundary_margin_sec": 0.0,
+            "sampling_seed": 7,
+            "raw_video_path": str(raw_path),
+        }
+        windows.append(window)
+        for frame_index, frame_path in enumerate(frame_paths):
+            path = dataset / frame_path
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.touch()
+            images.append(
+                {
+                    "image_id": f"{stem}_s{frame_index}",
+                    "window_id": window["window_id"],
+                    "path": frame_path,
+                }
+            )
+    write_jsonl(metadata / "windows.jsonl", windows)
+    write_jsonl(metadata / "images.jsonl", images)
+    (metadata / "class_to_idx.json").write_text('{"gameplay": 0}\n', encoding="utf-8")
+    (metadata / "summary.json").write_text(
+        json.dumps({"window_count": 2, "image_count": 8, "video_count": 2, "seed": 7}),
+        encoding="utf-8",
+    )
+    population = tmp_path / "population.json"
+    population.write_text(
+        json.dumps({"videos": ["beach_train", "beach_val"]}),
+        encoding="utf-8",
+    )
+    val = tmp_path / "val.json"
+    val.write_text(json.dumps({"videos": ["beach_val"]}), encoding="utf-8")
+
+    report = MODULE.validate_source_held_out_dataset(dataset, population, val)
+
+    assert report["status"] == "passed"
+    assert report["train_video_count"] == 1
+    assert report["val_video_count"] == 1
+    assert report["source_split_leakage_count"] == 0

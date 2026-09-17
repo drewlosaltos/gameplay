@@ -36,6 +36,9 @@ DEFAULT_REMOTE = "googdrive:skyball/raw_video"
 CLASS_DIRS = {
     "gameplay": "gameplay",
     "timeout": "timeout",
+    "side switch": "timeout",
+    "court maintenance break": "timeout",
+    "referee mark inspection": "timeout",
     "set break": "setbreak",
     "set_break": "setbreak",
     "pre match": "prematch",
@@ -82,6 +85,11 @@ def parse_args() -> argparse.Namespace:
     sync.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT)
     sync.add_argument("--remote", default=DEFAULT_REMOTE)
     sync.add_argument("--remote-list-cache", type=Path)
+    sync.add_argument(
+        "--video-manifest",
+        type=Path,
+        help="optional JSON manifest limiting the workbook to its top-level videos list",
+    )
     sync.add_argument("--dry-run", action="store_true")
     sync.add_argument("--skip-duration-check", action="store_true")
 
@@ -90,6 +98,11 @@ def parse_args() -> argparse.Namespace:
     validate.add_argument("--raw-root", type=Path, default=DEFAULT_RAW_ROOT)
     validate.add_argument("--metadata-dir", type=Path, required=True)
     validate.add_argument("--tolerance-sec", type=float, default=0.25)
+    validate.add_argument(
+        "--video-manifest",
+        type=Path,
+        help="optional JSON manifest limiting the workbook to its top-level videos list",
+    )
 
     extract = subparsers.add_parser("extract", help="extract sampled 4-frame windows into ImageNet folders")
     extract.add_argument("--workbook", type=Path, default=DEFAULT_WORKBOOK)
@@ -104,10 +117,26 @@ def parse_args() -> argparse.Namespace:
     )
     extract.add_argument("--seed", type=int, default=20260628)
     extract.add_argument("--val-fraction", type=float, default=0.20)
-    extract.add_argument(
+    validation_source = extract.add_mutually_exclusive_group()
+    validation_source.add_argument(
         "--static-val-metadata",
         type=Path,
         help="metadata dir or windows.jsonl from a base dataset whose validation source videos should be preserved",
+    )
+    validation_source.add_argument(
+        "--val-video-manifest",
+        type=Path,
+        help="JSON manifest containing the exact held-out validation videos",
+    )
+    extract.add_argument(
+        "--video-manifest",
+        type=Path,
+        help="optional JSON manifest limiting the workbook to its top-level videos list",
+    )
+    extract.add_argument(
+        "--val-cohort-name",
+        default="v2_fixed",
+        help="validation cohort label written for the base or explicitly held-out videos",
     )
     extract.add_argument(
         "--train-split-name",
@@ -176,7 +205,21 @@ def hms(seconds: float) -> str:
     return f"{whole // 3600:02d}:{(whole % 3600) // 60:02d}:{whole % 60:02d}"
 
 
-def read_labels(workbook: Path) -> pd.DataFrame:
+def load_video_manifest(path: Path) -> set[str]:
+    """Load normalized source-video IDs from a top-level ``videos`` list."""
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    videos = payload.get("videos", [])
+    video_ids = {
+        normalize_video_id(entry.get("source_video", "") if isinstance(entry, dict) else entry)
+        for entry in videos
+    }
+    video_ids.discard("")
+    if not video_ids:
+        raise ValueError(f"No videos found in {path}")
+    return video_ids
+
+
+def read_labels(workbook: Path, video_ids: set[str] | None = None) -> pd.DataFrame:
     labels = pd.read_excel(workbook)
     labels = labels.dropna(subset=["video", "category", "start_sec", "end_sec"]).copy()
     labels["source_video"] = labels["video"].astype(str).str.strip()
@@ -186,13 +229,22 @@ def read_labels(workbook: Path) -> pd.DataFrame:
     labels["class_dir"] = labels["category"].map(class_dir_for)
     labels["start_sec"] = labels["start_sec"].astype(float)
     labels["end_sec"] = labels["end_sec"].astype(float)
+    if video_ids is not None:
+        available = set(labels["video_id"])
+        missing = sorted(video_ids - available)
+        if missing:
+            raise ValueError(
+                f"{len(missing)} manifest videos are missing from {workbook}: "
+                + ", ".join(missing)
+            )
+        labels = labels[labels["video_id"].isin(video_ids)].copy()
     labels = labels.sort_values(["video_id", "start_sec", "end_sec"]).reset_index(drop=False)
     labels = labels.rename(columns={"index": "row_index"})
     return labels
 
 
-def workbook_video_names(workbook: Path) -> set[str]:
-    labels = read_labels(workbook)
+def workbook_video_names(workbook: Path, video_ids: set[str] | None = None) -> set[str]:
+    labels = read_labels(workbook, video_ids)
     return set(labels["source_video"])
 
 
@@ -255,7 +307,8 @@ def choose_remote_paths(remote_paths: list[str], wanted_names: set[str]) -> tupl
 def run_sync_raw(args: argparse.Namespace) -> None:
     metadata_dir = args.output_root.parent / f"{args.output_root.name}_raw_sync"
     cache_path = args.remote_list_cache or (metadata_dir / "remote_raw_video_files.txt")
-    wanted = workbook_video_names(args.workbook)
+    video_ids = load_video_manifest(args.video_manifest) if args.video_manifest else None
+    wanted = workbook_video_names(args.workbook, video_ids)
     remote_paths = list_remote_files(args.remote, cache_path)
     chosen, duplicates = choose_remote_paths(remote_paths, wanted)
     missing = sorted(wanted - set(chosen))
@@ -303,7 +356,7 @@ def run_sync_raw(args: argparse.Namespace) -> None:
     ]
     subprocess.run(cmd, check=True)
     if not args.skip_duration_check:
-        validate_raw_durations(args.workbook, args.raw_root, metadata_dir)
+        validate_raw_durations(args.workbook, args.raw_root, metadata_dir, video_ids=video_ids)
 
 
 def ffprobe_duration_sec(path: Path) -> float:
@@ -328,8 +381,14 @@ def ffprobe_duration_sec(path: Path) -> float:
     return float(result.stdout.strip())
 
 
-def validate_raw_durations(workbook: Path, raw_root: Path, metadata_dir: Path, tolerance_sec: float = 0.25) -> None:
-    labels = read_labels(workbook)
+def validate_raw_durations(
+    workbook: Path,
+    raw_root: Path,
+    metadata_dir: Path,
+    tolerance_sec: float = 0.25,
+    video_ids: set[str] | None = None,
+) -> None:
+    labels = read_labels(workbook, video_ids)
     raw_videos = local_raw_videos(raw_root)
     rows = []
     mismatches = []
@@ -491,6 +550,7 @@ def build_staged_windows(
     legacy_gameplay_stride: float,
     legacy_negative_stride: float,
     expanded_val_stride: float,
+    legacy_val_cohort: str = "v2_fixed",
 ) -> list[dict]:
     """Build train and validation windows with population-specific strides.
 
@@ -534,7 +594,7 @@ def build_staged_windows(
         (
             build_windows(legacy_regions, clip_seconds, legacy_gameplay_stride, legacy_negative_stride),
             "val",
-            "v2_fixed",
+            legacy_val_cohort,
         ),
         (
             build_windows(expanded_regions, clip_seconds, expanded_val_stride, expanded_val_stride),
@@ -616,16 +676,7 @@ def load_expanded_val_videos(path: Path) -> set[str]:
     Raises:
         ValueError: If the manifest has no usable videos.
     """
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    videos = payload.get("videos", [])
-    video_ids = {
-        normalize_video_id(entry.get("source_video", "") if isinstance(entry, dict) else entry)
-        for entry in videos
-    }
-    video_ids.discard("")
-    if not video_ids:
-        raise ValueError(f"No expanded validation videos found in {path}")
-    return video_ids
+    return load_video_manifest(path)
 
 
 def resize_lanczos(image_bgr, long_edge: int) -> Image.Image:
@@ -918,7 +969,7 @@ def write_jsonl(path: Path, rows: list[dict]) -> None:
             handle.write(json.dumps(row, sort_keys=True) + "\n")
 
 
-def run_extract(args: argparse.Namespace) -> None:
+def run_extract(args: argparse.Namespace, extractor: Callable = extract_video_frames) -> None:
     if args.output_root.exists():
         if args.force:
             shutil.rmtree(args.output_root)
@@ -928,7 +979,8 @@ def run_extract(args: argparse.Namespace) -> None:
             )
     (args.output_root / "metadata").mkdir(parents=True, exist_ok=True)
 
-    labels = read_labels(args.workbook)
+    subset_video_ids = load_video_manifest(args.video_manifest) if args.video_manifest else None
+    labels = read_labels(args.workbook, subset_video_ids)
     regions = build_regions(labels, args.prematch_gameplay_zone_sec, args.other_transition_zone_sec)
     dropped_regions = [region for region in regions if region.stable_duration_sec < args.clip_seconds]
     reference_windows = build_windows(
@@ -952,6 +1004,14 @@ def run_extract(args: argparse.Namespace) -> None:
                 "Static validation videos from the base dataset are missing in the new workbook: "
                 + ", ".join(missing_static)
             )
+    elif args.val_video_manifest:
+        base_val_videos = load_video_manifest(args.val_video_manifest)
+        missing_explicit = sorted(base_val_videos - available_video_ids)
+        if missing_explicit:
+            raise SystemExit(
+                "Explicit validation videos are missing in the selected workbook population: "
+                + ", ".join(missing_explicit)
+            )
     else:
         base_val_videos = choose_val_videos(reference_windows, args.seed, args.val_fraction)
 
@@ -974,6 +1034,7 @@ def run_extract(args: argparse.Namespace) -> None:
         legacy_gameplay_stride=args.gameplay_stride_sec,
         legacy_negative_stride=args.negative_stride_sec,
         expanded_val_stride=args.expanded_val_stride_sec,
+        legacy_val_cohort=args.val_cohort_name,
     )
     val_videos = base_val_videos | expanded_val_videos
     image_rows: list[dict] = []
@@ -985,6 +1046,11 @@ def run_extract(args: argparse.Namespace) -> None:
     for window in windows:
         split = args.train_split_name if window["split_population"] == "train" else "val"
         window["split"] = split
+        window["boundary_margin_sec"] = max(
+            float(window["start_exclude_sec"]),
+            float(window["end_exclude_sec"]),
+        )
+        window["sampling_seed"] = args.seed
         window["raw_video_path"] = str(raw_videos[window["video_id"]])
         frame_paths: list[str] = []
         for frame_index, time_sec in enumerate(window["times_sec"]):
@@ -1006,6 +1072,10 @@ def run_extract(args: argparse.Namespace) -> None:
                     "video_id": window["video_id"],
                     "validation_cohort": window["validation_cohort"],
                     "raw_video_path": str(raw_videos[window["video_id"]]),
+                    "region_start_sec": window["region_start_sec"],
+                    "region_end_sec": window["region_end_sec"],
+                    "boundary_margin_sec": window["boundary_margin_sec"],
+                    "sampling_seed": args.seed,
                     "time_sec": time_sec,
                     "frame_index": frame_index,
                     "path": str(rel_path),
@@ -1035,6 +1105,7 @@ def run_extract(args: argparse.Namespace) -> None:
         long_edge=args.long_edge,
         jpeg_quality=args.jpeg_quality,
         workers=args.extract_workers,
+        extractor=extractor,
     )
 
     if failures:
@@ -1060,12 +1131,15 @@ def run_extract(args: argparse.Namespace) -> None:
         "output_root": str(args.output_root),
         "seed": args.seed,
         "val_fraction": args.val_fraction,
+        "video_manifest": str(args.video_manifest) if args.video_manifest else None,
         "static_val_metadata": str(args.static_val_metadata) if args.static_val_metadata else None,
+        "val_video_manifest": str(args.val_video_manifest) if args.val_video_manifest else None,
+        "val_cohort_name": args.val_cohort_name,
         "static_val_video_count": len(base_val_videos),
         "expanded_val_manifest": str(args.expanded_val_manifest) if args.expanded_val_manifest else None,
         "expanded_val_video_count": len(expanded_val_videos),
         "validation_cohort_videos": {
-            "v2_fixed": sorted(base_val_videos),
+            args.val_cohort_name: sorted(base_val_videos),
             "v5_expanded": sorted(expanded_val_videos),
         },
         "train_split_name": args.train_split_name,
@@ -1099,7 +1173,7 @@ def run_extract(args: argparse.Namespace) -> None:
                 "gameplay_stride_sec": args.gameplay_stride_sec,
                 "negative_stride_sec": train_negative_stride,
             },
-            "v2_fixed": {
+            args.val_cohort_name: {
                 "gameplay_stride_sec": args.gameplay_stride_sec,
                 "negative_stride_sec": args.negative_stride_sec,
             },
@@ -1132,7 +1206,14 @@ def main() -> None:
     if args.command == "sync-raw":
         run_sync_raw(args)
     elif args.command == "validate-raw":
-        validate_raw_durations(args.workbook, args.raw_root, args.metadata_dir, args.tolerance_sec)
+        video_ids = load_video_manifest(args.video_manifest) if args.video_manifest else None
+        validate_raw_durations(
+            args.workbook,
+            args.raw_root,
+            args.metadata_dir,
+            args.tolerance_sec,
+            video_ids,
+        )
     elif args.command == "extract":
         run_extract(args)
     else:

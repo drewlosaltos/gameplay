@@ -27,6 +27,7 @@ GRAD_ACCUM_STEPS=${GRAD_ACCUM_STEPS:-1}
 EVAL_BATCH_SIZE=${EVAL_BATCH_SIZE:-128}
 CHECK_GPUS=${CHECK_GPUS:-1}
 DRY_RUN=${DRY_RUN:-0}
+INIT_CHECKPOINT=${INIT_CHECKPOINT:-}
 
 echo "Training SkyBall SigLIP temporal model"
 echo "  dataset: ${DSET_DIR}"
@@ -35,6 +36,9 @@ echo "  trainer: ${REPO_ROOT}/skyball_gameplay"
 echo "  model:   ${TIMM_MODEL}"
 echo "  image:   ${IMAGE_HEIGHT}x${IMAGE_WIDTH}"
 echo "  gpus:    ${GPUS}"
+if [[ -n "${INIT_CHECKPOINT}" ]]; then
+  echo "  init:    ${INIT_CHECKPOINT}"
+fi
 
 if [[ "${DRY_RUN}" == "1" ]]; then
   echo "DRY_RUN=1; command not launched."
@@ -52,6 +56,10 @@ if [[ -e "${OUT_DIR}/last_${TAG}.pth.tar" || -e "${CHECKPOINT}" ]]; then
 fi
 
 cd "${REPO_ROOT}"
+INIT_ARGS=()
+if [[ -n "${INIT_CHECKPOINT}" ]]; then
+  INIT_ARGS=(--init-checkpoint "${INIT_CHECKPOINT}")
+fi
 CUDA_VISIBLE_DEVICES="${GPUS}" conda run --no-capture-output -n "${CONDA_ENV}" \
   python -m skyball_gameplay.training \
     --timm-model "${TIMM_MODEL}" \
@@ -86,6 +94,7 @@ CUDA_VISIBLE_DEVICES="${GPUS}" conda run --no-capture-output -n "${CONDA_ENV}" \
     --temporal-shared-augment \
     --output-dir "${OUT_DIR}" \
     --run-tag "${TAG}" \
+    "${INIT_ARGS[@]}" \
     "${DSET_DIR}"
 
 if [[ ! -f "${CHECKPOINT}" ]]; then

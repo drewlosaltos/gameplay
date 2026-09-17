@@ -140,3 +140,39 @@ def test_evaluator_caps_large_temporal_batch_prefetch() -> None:
     )
 
     assert workers == 5
+
+
+def test_initialize_checkpoint_loads_weights_without_training_state(tmp_path: Path) -> None:
+    """Fine-tuning should load production weights while resetting the schedule."""
+    source = nn.Linear(3, 2)
+    target = nn.Linear(3, 2)
+    checkpoint = tmp_path / "production.pth.tar"
+    torch.save(
+        {
+            "epoch": 4,
+            "timm_model": "siglip",
+            "input_frames": 4,
+            "label_mode": "binary",
+            "num_classes": 2,
+            "state_dict": source.state_dict(),
+        },
+        checkpoint,
+    )
+    args = training.build_parser().parse_args(
+        [
+            "--timm-model",
+            "siglip",
+            "--input-frames",
+            "4",
+            "--label-mode",
+            "binary",
+            "--init-checkpoint",
+            str(checkpoint),
+        ]
+    )
+    args.num_classes = 2
+
+    training.initialize_checkpoint(args, target, torch.device("cpu"))
+
+    for expected, actual in zip(source.parameters(), target.parameters(), strict=True):
+        assert torch.equal(expected, actual)

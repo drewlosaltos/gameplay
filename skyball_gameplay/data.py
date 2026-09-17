@@ -243,11 +243,16 @@ def build_transforms(args: Any) -> tuple[Any, Any]:
         mean=args.normalization_mean,
         std=args.normalization_std,
     )
-    train_steps: list[Any] = [
-        transforms.RandomResizedCrop(
+    geometry = (
+        transforms.Resize(tuple(args.image_size))
+        if getattr(args, "train_geometry", "random_crop") == "full_frame"
+        else transforms.RandomResizedCrop(
             tuple(args.image_size),
             scale=(args.crop_scale_min, 1.0),
-        ),
+        )
+    )
+    train_steps: list[Any] = [
+        geometry,
         transforms.RandomHorizontalFlip(),
     ]
     policy = build_policy_transform(

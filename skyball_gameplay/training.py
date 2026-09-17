@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import random
 import shutil
@@ -28,6 +29,7 @@ from .modeling import normalization_for_backbone
 
 
 BEST_ACC1: float | torch.Tensor = 0.0
+BEST_SELECTION_SCORE = -1.0
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -56,7 +58,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--momentum", default=0.9, type=float)
     parser.add_argument("--wd", "--weight-decay", default=1e-4, type=float, dest="weight_decay")
     parser.add_argument("-p", "--print-freq", default=10, type=int)
-    parser.add_argument("--resume", default="")
+    checkpoint_source = parser.add_mutually_exclusive_group()
+    checkpoint_source.add_argument("--resume", default="")
+    checkpoint_source.add_argument(
+        "--init-checkpoint",
+        default="",
+        help="load model weights only and begin a fresh optimizer/schedule",
+    )
     parser.add_argument("-e", "--evaluate", action="store_true")
     parser.add_argument("--pretrained", action="store_true")
     parser.add_argument("--world-size", default=-1, type=int)
@@ -73,6 +81,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--label-mode", default="multiclass", choices=["binary", "multiclass"])
     parser.add_argument("--image-size", default=[224, 224], type=int, nargs=2)
     parser.add_argument("--crop-scale-min", default=0.08, type=float)
+    parser.add_argument("--train-geometry", default="random_crop", choices=["random_crop", "full_frame"])
+    parser.add_argument("--selection-metric", default="accuracy", choices=["accuracy", "f1", "balanced_accuracy"])
+    parser.add_argument("--gameplay-loss-weight", default=1.0, type=float)
+    parser.add_argument("--validation-fp32", action="store_true")
     parser.add_argument("--color-jitter", default=0.0, type=float)
     parser.add_argument(
         "--aug-policy",
@@ -199,8 +211,20 @@ def current_device(no_accel: bool) -> torch.device:
 
 def main_worker(gpu: int | None, ngpus_per_node: int, args: argparse.Namespace) -> None:
     """Run one training process."""
-    global BEST_ACC1
+    global BEST_ACC1, BEST_SELECTION_SCORE
+    BEST_ACC1, BEST_SELECTION_SCORE = 0.0, -1.0
     args.gpu = gpu
+    if args.seed is not None:
+        random.seed(args.seed + (gpu or 0))
+        torch.manual_seed(args.seed + (gpu or 0))
+        cudnn.deterministic = True
+        cudnn.benchmark = False
+    if args.label_mode != "binary" and (
+        args.selection_metric != "accuracy" or args.gameplay_loss_weight != 1.0
+    ):
+        raise ValueError("Gameplay F1 selection and loss weighting require binary labels")
+    if args.gameplay_loss_weight <= 0:
+        raise ValueError("gameplay loss weight must be positive")
     device = current_device(args.no_accel)
     if device.type == "cuda" and gpu is not None:
         torch.cuda.set_device(gpu)
@@ -271,7 +295,12 @@ def main_worker(gpu: int | None, ngpus_per_node: int, args: argparse.Namespace) 
         print("Using CPU; training will be slow")
         model.to(device)
 
-    criterion = torch.nn.CrossEntropyLoss().to(device)
+    initialize_checkpoint(args, model, device)
+    class_weight = (
+        torch.tensor([1.0, args.gameplay_loss_weight], device=device)
+        if args.gameplay_loss_weight != 1.0 else None
+    )
+    criterion = torch.nn.CrossEntropyLoss(weight=class_weight).to(device)
     optimizer = build_optimizer(
         model,
         learning_rate=args.lr,
@@ -325,7 +354,9 @@ def main_worker(gpu: int | None, ngpus_per_node: int, args: argparse.Namespace) 
         train_one_epoch(train_loader, model, criterion, optimizer, scaler, epoch, device, args)
         acc1 = validate(val_loader, model, criterion, args, device)
         scheduler.step()
-        is_best = float(acc1) > float(BEST_ACC1)
+        selection_score = args.last_validation_metrics[args.selection_metric]
+        is_best = selection_score > BEST_SELECTION_SCORE
+        BEST_SELECTION_SCORE = max(selection_score, BEST_SELECTION_SCORE)
         BEST_ACC1 = max(float(acc1), float(BEST_ACC1))
         if not args.multiprocessing_distributed or args.rank % ngpus_per_node == 0:
             tag = args.run_tag or f"{Path(args.data).name}_{args.arch}_f{args.input_frames}"
@@ -335,6 +366,10 @@ def main_worker(gpu: int | None, ngpus_per_node: int, args: argparse.Namespace) 
                 tag=tag,
                 output_dir=args.output_dir,
             )
+            with (Path(args.output_dir) / "epoch_metrics.jsonl").open("a") as handle:
+                handle.write(json.dumps({"epoch": epoch + 1, "selected": is_best,
+                    "selection_metric": args.selection_metric,
+                    **args.last_validation_metrics}) + "\n")
     if args.distributed:
         dist.destroy_process_group()
 
@@ -348,7 +383,7 @@ def resume_checkpoint(
     device: torch.device,
 ) -> None:
     """Restore complete training state when requested."""
-    global BEST_ACC1
+    global BEST_ACC1, BEST_SELECTION_SCORE
     if not args.resume:
         return
     if not Path(args.resume).is_file():
@@ -360,14 +395,49 @@ def resume_checkpoint(
         map_location=location,
         weights_only=False,
     )
+    if checkpoint.get("selection_metric", "accuracy") != args.selection_metric:
+        raise ValueError("Resume requires the checkpoint's original selection metric")
     args.start_epoch = int(checkpoint["epoch"])
     BEST_ACC1 = checkpoint["best_acc1"]
+    BEST_SELECTION_SCORE = checkpoint.get("best_selection_score", float(BEST_ACC1) / 100.0)
     model.load_state_dict(checkpoint["state_dict"])
     optimizer.load_state_dict(checkpoint["optimizer"])
     scheduler.load_state_dict(checkpoint["scheduler"])
     if checkpoint.get("scaler") is not None:
         scaler.load_state_dict(checkpoint["scaler"])
     print(f"=> loaded checkpoint '{args.resume}' (epoch {checkpoint['epoch']})")
+
+
+def initialize_checkpoint(
+    args: argparse.Namespace,
+    model: torch.nn.Module,
+    device: torch.device,
+) -> None:
+    """Initialize model weights without restoring optimizer or epoch state."""
+    if not args.init_checkpoint:
+        return
+    checkpoint_path = Path(args.init_checkpoint)
+    if not checkpoint_path.is_file():
+        raise FileNotFoundError(f"Initialization checkpoint does not exist: {checkpoint_path}")
+    checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    expected = {
+        "timm_model": args.timm_model,
+        "input_frames": args.input_frames,
+        "label_mode": args.label_mode,
+        "num_classes": args.num_classes,
+    }
+    mismatches = {
+        key: (checkpoint.get(key), value)
+        for key, value in expected.items()
+        if checkpoint.get(key) != value
+    }
+    if mismatches:
+        raise ValueError(f"Initialization checkpoint architecture mismatch: {mismatches}")
+    model.load_state_dict(checkpoint["state_dict"], strict=True)
+    print(
+        f"=> initialized model weights from '{checkpoint_path}' "
+        f"(source epoch {checkpoint.get('epoch', 'unknown')})"
+    )
 
 
 def checkpoint_payload(
@@ -387,6 +457,13 @@ def checkpoint_payload(
         "label_mode": args.label_mode,
         "image_size": args.image_size,
         "crop_scale_min": args.crop_scale_min,
+        "train_geometry": args.train_geometry,
+        "selection_metric": args.selection_metric,
+        "best_selection_score": BEST_SELECTION_SCORE,
+        "validation_metrics": getattr(args, "last_validation_metrics", None),
+        "gameplay_loss_weight": args.gameplay_loss_weight,
+        "validation_fp32": args.validation_fp32,
+        "seed": args.seed,
         "color_jitter": args.color_jitter,
         "aug_policy": args.aug_policy,
         "auto_augment_policy": args.auto_augment_policy,
@@ -402,6 +479,7 @@ def checkpoint_payload(
         "learning_rate": args.lr,
         "backbone_lr_multiplier": args.backbone_lr_multiplier,
         "grad_accum_steps": args.grad_accum_steps,
+        "init_checkpoint": args.init_checkpoint or None,
         "weight_decay": args.weight_decay,
         "amp": args.amp,
         "num_classes": args.num_classes,
@@ -481,7 +559,7 @@ def validate(
     args: argparse.Namespace,
     device: torch.device,
 ) -> float:
-    """Evaluate accuracy, including the residual DDP validation tail."""
+    """Evaluate accuracy and binary confusion, including the residual DDP tail."""
     batch_count = effective_batch_count(loader, args.max_val_batches)
     batch_time = AverageMeter("Time", ":6.3f")
     losses = AverageMeter("Loss", ":.4e")
@@ -490,6 +568,7 @@ def validate(
     topk = AverageMeter(f"Acc@{max_k}", ":6.2f", Summary.AVERAGE)
     progress = ProgressMeter(batch_count, [batch_time, losses, top1, topk], "Test: ")
     model.eval()
+    confusion = torch.zeros((args.num_classes, args.num_classes), dtype=torch.int64, device=device)
 
     def run(active_loader: Any, limit: int, base_progress: int = 0) -> None:
         end = time.time()
@@ -502,11 +581,16 @@ def validate(
                 target = target.to(device, non_blocking=True)
                 with torch.autocast(
                     device_type=device.type,
-                    enabled=args.amp and device.type == "cuda",
+                    enabled=args.amp and device.type == "cuda" and not getattr(args, "validation_fp32", False),
                 ):
                     output = model(images)
                     loss = criterion(output, target)
                 acc1, acck = accuracy(output, target, topk=(1, max_k))
+                predicted = output.argmax(dim=1)
+                confusion.add_(torch.bincount(
+                    target * args.num_classes + predicted,
+                    minlength=args.num_classes ** 2,
+                ).reshape(args.num_classes, args.num_classes))
                 losses.update(loss.item(), images.size(0))
                 top1.update(acc1[0], images.size(0))
                 topk.update(acck[0], images.size(0))
@@ -519,6 +603,7 @@ def validate(
     if args.distributed:
         top1.all_reduce(device)
         topk.all_reduce(device)
+        dist.all_reduce(confusion, dist.ReduceOp.SUM)
     full_validation = args.max_val_batches is None
     if (
         full_validation
@@ -538,7 +623,25 @@ def validate(
         )
         run(auxiliary_loader, len(auxiliary_loader), len(loader))
     progress.display_summary()
+    args.last_validation_metrics = metrics_from_confusion(confusion)
+    print("Validation metrics: " + json.dumps(args.last_validation_metrics))
     return float(top1.avg)
+
+
+def metrics_from_confusion(confusion: torch.Tensor) -> dict[str, Any]:
+    """Compute population metrics after DDP reduction and one residual tail."""
+    counts = confusion.detach().cpu()
+    total = int(counts.sum())
+    metrics = {"accuracy": float(counts.diag().sum()) / max(total, 1),
+               "count": total, "confusion": counts.tolist()}
+    if counts.shape == (2, 2):
+        tn, fp, fn, tp = counts.flatten().tolist()
+        metrics.update(
+            f1=2 * tp / max(2 * tp + fp + fn, 1),
+            balanced_accuracy=.5 * (tp / max(tp + fn, 1) + tn / max(tn + fp, 1)),
+            precision=tp / max(tp + fp, 1), recall=tp / max(tp + fn, 1),
+        )
+    return metrics
 
 
 def save_checkpoint(

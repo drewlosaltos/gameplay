@@ -1,0 +1,66 @@
+{
+  "created_at": "2026-09-17T03:16:36.252358+00:00",
+  "dataset": "/mnt/t/data/vball/skyball/gameplay/human_app_v0",
+  "annotation_source": "human",
+  "train_matches": 45,
+  "validation_matches": 5,
+  "train_images": 39556,
+  "validation_images": 5680,
+  "validation_windows": 1420,
+  "fixed_threshold": 0.5,
+  "prediction_population_verified_identical": true,
+  "validation_manifest_sha256": "e68bf8974b8cd51138b269250f47c277502e9f4941c6a2cf629a702993b236e0",
+  "old_metrics_path": "/mnt/t/output/skyball_gameplay/human_app_v0_20260916/old_model_baseline/metrics.json",
+  "fine_tuned_metrics_path": "/mnt/t/output/trn/skyball_gameplay/human_app_v0_siglip512_prod_finetune_20260916/eval_siglip_base_f4_avg_binary_h512w512_step4s2_pre_drop010/metrics.json",
+  "old": {
+    "accuracy": 0.893661971830986,
+    "balanced_accuracy": 0.9002022074311231,
+    "confusion": {
+      "fn": 112,
+      "fp": 39,
+      "tn": 468,
+      "tp": 801
+    },
+    "count": 1420,
+    "f1": 0.9138619509412436,
+    "negative_count": 507,
+    "positive_count": 913,
+    "precision": 0.9535714285714286,
+    "recall": 0.8773274917853231,
+    "roc_auc": 0.9727689672082629
+  },
+  "fine_tuned": {
+    "accuracy": 0.9007042253521127,
+    "balanced_accuracy": 0.9166423628888875,
+    "confusion": {
+      "fn": 127,
+      "fp": 14,
+      "tn": 493,
+      "tp": 786
+    },
+    "count": 1420,
+    "f1": 0.9176882661996497,
+    "negative_count": 507,
+    "positive_count": 913,
+    "precision": 0.9825,
+    "recall": 0.8608981380065718,
+    "roc_auc": 0.9824775163051345
+  },
+  "delta_percentage_points": {
+    "f1": 0.38263152584061544,
+    "accuracy": 0.7042253521126751,
+    "balanced_accuracy": 1.6440155457764338,
+    "precision": 2.8928571428571415,
+    "recall": -1.642935377875132,
+    "roc_auc": 0.9708549096871577
+  },
+  "checkpoint": "/mnt/t/output/trn/skyball_gameplay/human_app_v0_siglip512_prod_finetune_20260916/best_siglip_base_f4_avg_binary_h512w512_step4s2_pre_drop010.pth.tar",
+  "checkpoint_sha256": "8c0fd6e35db1dd3964f7bd919287a2ab199781e68aa8cacfd7716630fd888701",
+  "selected_epoch_one_based": 1,
+  "training_epochs_completed": 4,
+  "checkpoint_selection": "Existing launcher selects by validation accuracy; first epoch retained.",
+  "reviews_approved": true,
+  "comparison_report": "/mnt/t/output/skyball_gameplay/human_app_v0_20260916/comparison.md",
+  "full_video_gate_status": "not_evaluated_for_this_finetune",
+  "model_registry_updated": false
+}

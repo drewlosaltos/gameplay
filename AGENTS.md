@@ -39,13 +39,18 @@ the Google Drive version name in local outputs.
 3. Stop for user review before extracting the full training dataset.
 4. After approval, extract an ImageNet-style frame dataset under
    `/mnt/t/data/vball/skyball/gameplay/vN`.
-5. Train in stages:
-   - Current best: pretrained ResNet-50, four-frame, four-second window model,
-     average pooled encoder embeddings, binary classification.
-   - Higher-resolution ablation: repeat the temporal model with a 512x512 model
-     transform.
-   - Baseline: ResNet-50, single image, binary classification.
-   - Optional: binary or multiclass heads for either image or window inputs.
+5. Canonical indoor training is **two-stage full-frame SigLIP-Base**:
+   - Adapt an explicitly identified gameplay checkpoint on the legacy training
+     split for two epochs, selecting by legacy-validation F1.
+   - Fine-tune that checkpoint exclusively on human training data for four
+     epochs, selecting by human-validation F1.
+   - Four frames at 1 Hz, shared `vit_base_patch16_siglip_512.v2_webli` encoder,
+     average embeddings, binary head. Resize the whole frame to 512x512
+     (stretching its aspect ratio); shared flips and light color jitter, no
+     random crop, RandAugment or erasing.
+   - Use `scripts/train_two_stage_fullframe.py` and `README.md`. Both validation
+     sources below are required. ResNet/single-frame recipes are historical
+     baselines, not the default for new indoor fine-tunes.
 
 For new gameplay versions with a static validation request, read
 `workflows/new_dataset_static_val.md`. The comparison policy is to keep
@@ -174,6 +179,27 @@ zones around labeled transitions:
 
 ## Gameplay Gate Validation
 
+- Every completed gameplay training/fine-tuning candidate requires **two
+  validation sources**: (1) held-out dataset classification metrics, including
+  F1 on human and legacy validation when applicable; (2) the canonical ten full
+  evaluation matches. Do not declare model validation complete from F1 alone.
+- For the second source, report per match and pooled: **number of confirmed GT
+  events excluded** by the final gameplay admission ranges, and **extra footage
+  admitted as a percentage of the entire match**. Extra footage means frames
+  farther than +/-3 seconds from every confirmed synchronized GT event. Union
+  overlapping event windows, use exact source-frame coordinates, and duration-
+  weight the pooled percentage. Outside-event footage is a proxy, not manually
+  verified non-gameplay. Prioritize zero excluded events over filtering more.
+- Bind these evaluations to the canonical primary-video root
+  `/mnt/t/output/skyball_pipeline/evaluation_full10_h_primary30fps_20260806_v1`,
+  including its two 30-fps transcodes and remapped GT. Use production frame
+  sampling/preprocessing and verify cached input/checkpoint identities before
+  reuse. `scripts/evaluate_gameplay_event_coverage.py` implements the metrics.
+- State threshold, padding per side, merge gap, and runtime for every result.
+  Compare candidate and production at identical settings, then separately show
+  their selected settings. Include both validation sources and evidence paths
+  in the result ledger/model registry. These ten matches are a second source
+  of validation, not an independent test set after model/policy selection.
 - Use `workflows/gameplay_gate_validation.md` for full-video gameplay-gating
   studies against the ten SkyBall evaluation matches.
 - The canonical joint safety/effectiveness non-regression contract is

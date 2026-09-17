@@ -58,6 +58,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--opt-batch", type=int, default=4)
     parser.add_argument("--max-batch", type=int, default=8)
     parser.add_argument("--workspace-gib", type=float, default=8.0)
+    parser.add_argument("--disable-tf32", action="store_true",
+                        help="Disable TF32 tactics for stricter FP32 parity.")
     return parser.parse_args()
 
 
@@ -104,6 +106,8 @@ def main() -> None:
             (args.max_batch, *trailing_shape),
         )
         config.add_optimization_profile(profile)
+        if args.disable_tf32:
+            config.clear_flag(tensorrt.BuilderFlag.TF32)
         config.set_memory_pool_limit(
             tensorrt.MemoryPoolType.WORKSPACE,
             int(args.workspace_gib * (1 << 30)),
@@ -131,6 +135,7 @@ def main() -> None:
         "engine_sha256": sha256_file(args.engine),
         "engine_size_bytes": args.engine.stat().st_size,
         "precision": "fp32",
+        "tf32_enabled": not args.disable_tf32,
         "workspace_gib": args.workspace_gib,
         "optimization_profile": {
             "min_batch": args.min_batch,

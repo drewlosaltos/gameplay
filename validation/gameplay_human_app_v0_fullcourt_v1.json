@@ -1,0 +1,169 @@
+{
+  "status": "complete",
+  "model_id": "gentle_full_frame",
+  "checkpoint": "/mnt/t/output/trn/skyball_gameplay/human_app_v0_gentle_full_frame_20260916/best_siglip512_human_rnd.pth.tar",
+  "checkpoint_sha256": "5412476d927556c0189c42ae9dd02d2f67728fe083624f8aaaf98a76bf6cadfc",
+  "human_validation": {
+    "accuracy": 0.9408450704225352,
+    "balanced_accuracy": 0.9373329790382616,
+    "precision": 0.958011049723757,
+    "recall": 0.9496166484118291,
+    "f1": 0.9537953795379538,
+    "roc_auc": 0.9812396438902463,
+    "confusion": {
+      "tn": 469,
+      "fp": 38,
+      "fn": 46,
+      "tp": 867
+    },
+    "count": 1420,
+    "positive_count": 913,
+    "negative_count": 507
+  },
+  "human_validation_threshold": 0.5,
+  "legacy_validation": {
+    "old": {
+      "accuracy": 0.9382278481012658,
+      "balanced_accuracy": 0.9380270403682311,
+      "precision": 0.9287801314828342,
+      "recall": 0.9512468827930175,
+      "f1": 0.9398792657385735,
+      "roc_auc": 0.9704778702344397,
+      "confusion": {
+        "tn": 7195,
+        "fp": 585,
+        "fn": 391,
+        "tp": 7629
+      },
+      "count": 15800,
+      "positive_count": 8020,
+      "negative_count": 7780
+    },
+    "candidate": {
+      "accuracy": 0.9412658227848101,
+      "balanced_accuracy": 0.9410310983466783,
+      "precision": 0.9298181818181818,
+      "recall": 0.9564837905236908,
+      "f1": 0.942962507682852,
+      "roc_auc": 0.9715618809659655,
+      "confusion": {
+        "tn": 7201,
+        "fp": 579,
+        "fn": 349,
+        "tp": 7671
+      },
+      "count": 15800,
+      "positive_count": 8020,
+      "negative_count": 7780
+    }
+  },
+  "combined_validation": {
+    "old": {
+      "accuracy": 0.9345528455284553,
+      "balanced_accuracy": 0.9341966341253203,
+      "precision": 0.9310801855533466,
+      "recall": 0.9436919288033135,
+      "f1": 0.937343637071218,
+      "roc_auc": 0.9705011852916657,
+      "confusion": {
+        "tn": 7663,
+        "fp": 624,
+        "fn": 503,
+        "tp": 8430
+      },
+      "count": 17220,
+      "positive_count": 8933,
+      "negative_count": 8287
+    },
+    "candidate": {
+      "accuracy": 0.9412311265969803,
+      "balanced_accuracy": 0.9406639840607925,
+      "precision": 0.932605133806663,
+      "recall": 0.9557819321616479,
+      "f1": 0.9440513047324193,
+      "roc_auc": 0.9722246938922422,
+      "confusion": {
+        "tn": 7670,
+        "fp": 617,
+        "fn": 395,
+        "tp": 8538
+      },
+      "count": 17220,
+      "positive_count": 8933,
+      "negative_count": 8287
+    }
+  },
+  "full_video_gate": {
+    "model": "gentle_full_frame",
+    "checkpoint": "/mnt/t/output/trn/skyball_gameplay/human_app_v0_gentle_full_frame_20260916/best_siglip512_human_rnd.pth.tar",
+    "report": "/mnt/t/output/skyball_gameplay/human_app_v0_rnd_20260916/gate_best/thr0.15_gap0_pre10_post10/pipeline_fp_impact.json",
+    "validation": "/mnt/t/output/skyball_gameplay/human_app_v0_rnd_20260916/gate_best/selected_gate_result.json",
+    "policy": {
+      "threshold": 0.15,
+      "merge_gap_sec": 0.0,
+      "pad_before_sec": 10,
+      "pad_after_sec": 10
+    },
+    "aggregate": {
+      "gameplay": {
+        "video_duration_seconds": 58112.403897,
+        "annotated_gameplay_seconds": 16535.239100000017,
+        "covered_gameplay_seconds": 16535.239100000017,
+        "missed_gameplay_seconds": 0.0,
+        "events": 8848,
+        "covered_events": 8848,
+        "rallies": 1370,
+        "fully_covered_rallies": 1370,
+        "retained_total_seconds": 43453.28263,
+        "excluded_video_seconds": 14659.121266999999,
+        "annotation_negative_seconds": 41577.16479699998,
+        "retained_annotation_negative_seconds": 26918.043529999984,
+        "predicted_intervals": 144,
+        "annotated_gameplay_recall": 1.0,
+        "event_recall": 1.0,
+        "rally_full_coverage_recall": 1.0,
+        "retained_video_fraction": 0.7477453988483729,
+        "excluded_video_fraction": 0.2522546011516272,
+        "retained_annotation_negative_fraction": 0.647423739964642
+      },
+      "action_false_positives": {
+        "current": 531,
+        "rejected": 94,
+        "remaining": 437,
+        "rejected_fraction": 0.17702448210922786
+      },
+      "outside_gt_event_margin_action_false_positives": {
+        "definition": "unmatched predicted action more than 3 seconds from every confirmed synchronized GT action",
+        "current": 114,
+        "rejected": 94,
+        "remaining": 20,
+        "rejected_fraction": 0.8245614035087719
+      },
+      "unmatched_predictions_within_gt_event_margin": 417,
+      "matched_true_actions": {
+        "current": 8318,
+        "rejected": 0,
+        "remaining": 8318
+      },
+      "invalid_predicted_plays": {
+        "current": 47,
+        "rejected": 37,
+        "remaining": 10,
+        "rejected_fraction": 0.7872340425531915
+      },
+      "valid_predicted_plays": {
+        "current": 1395,
+        "rejected": 0,
+        "remaining": 1395
+      }
+    },
+    "safe_policies_in_grid": 35,
+    "policies_searched": 63,
+    "gate_status": "pass"
+  },
+  "experiment_comparison": "/mnt/t/output/skyball_gameplay/human_app_v0_rnd_20260916/comparison.json",
+  "review": "/mnt/t/output/skyball_gameplay/human_app_v0_rnd_20260916/index.html",
+  "source_labels_changed": false,
+  "production_registry_changed": false,
+  "caveat": "Human validation selected experiment/epoch; full-video policy selected retrospectively on the same ten matches. No deployment or runtime export."
+}

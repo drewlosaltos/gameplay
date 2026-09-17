@@ -1,0 +1,78 @@
+{
+  "contract_id": "gameplay_event_coverage_full10_v1",
+  "margin_sec": 3.0,
+  "events": 8848,
+  "rallies": 1370,
+  "matches": [
+    {
+      "video": "/mnt/t/output/skyball_pipeline/evaluation_full10_h_primary30fps_20260806_v1/eval_club_001_tav_mkesting/eval_club_001_tav_mkesting.mp4",
+      "gt_sync_csv": "/mnt/t/output/skyball_pipeline/evaluation_full10_h_primary30fps_20260806_v1/eval_club_001_tav_mkesting/eval_club_001_tav_mkesting_gt_synced.csv",
+      "match": "eval_club_001_tav_mkesting",
+      "gt_sha256": "d19393f8b2fa14de2d4dac0e025c25bcac0cddad132c314e50a2bdfdaa94ab7d",
+      "video_size_bytes": 4171262881
+    },
+    {
+      "video": "/mnt/t/output/skyball_pipeline/evaluation_full10_h_primary30fps_20260806_v1/eval_club_002_leftcoast_baytobay/eval_club_002_leftcoast_baytobay.mp4",
+      "gt_sync_csv": "/mnt/t/output/skyball_pipeline/evaluation_full10_h_primary30fps_20260806_v1/eval_club_002_leftcoast_baytobay/eval_club_002_leftcoast_baytobay_gt_synced.csv",
+      "match": "eval_club_002_leftcoast_baytobay",
+      "gt_sha256": "870b4bfe70b1e81836262e8ed9d022074b38c980b7cfe40cff3f6b82e930fc32",
+      "video_size_bytes": 4449571654
+    },
+    {
+      "video": "/mnt/t/output/skyball_pipeline/evaluation_full10_h_primary30fps_20260806_v1/eval_club_003_serv_iowaunited/eval_club_003_serv_iowaunited.mp4",
+      "gt_sync_csv": "/mnt/t/output/skyball_pipeline/evaluation_full10_h_primary30fps_20260806_v1/eval_club_003_serv_iowaunited/eval_club_003_serv_iowaunited_gt_synced.csv",
+      "match": "eval_club_003_serv_iowaunited",
+      "gt_sha256": "1e764498831453a1c4275470bebb0f573845769102c40a0c790fdb79a52bc558",
+      "video_size_bytes": 1564074100
+    },
+    {
+      "video": "/mnt/t/output/skyball_pipeline/evaluation_full10_h_primary30fps_20260806_v1/eval_club_004_longbeach_rockstar/eval_club_004_longbeach_rockstar.mp4",
+      "gt_sync_csv": "/mnt/t/output/skyball_pipeline/evaluation_full10_h_primary30fps_20260806_v1/eval_club_004_longbeach_rockstar/eval_club_004_longbeach_rockstar_gt_synced.csv",
+      "match": "eval_club_004_longbeach_rockstar",
+      "gt_sha256": "5489e83df57aaa44d8c9cfeeba8bdc2fb3ab1910f25424a7dc7ee729f9a1a65f",
+      "video_size_bytes": 1847651359
+    },
+    {
+      "video": "/mnt/t/output/skyball_pipeline/evaluation_full10_h_primary30fps_20260806_v1/eval_club_005_pac_balboa/eval_club_005_pac_balboa.mp4",
+      "gt_sync_csv": "/mnt/t/output/skyball_pipeline/evaluation_full10_h_primary30fps_20260806_v1/eval_club_005_pac_balboa/eval_club_005_pac_balboa_gt_synced.csv",
+      "match": "eval_club_005_pac_balboa",
+      "gt_sha256": "30d56bf93f899fd8e3130557b56f50abf154220637f12f068a6b7c24c8860655",
+      "video_size_bytes": 1200750844
+    },
+    {
+      "video": "/mnt/t/output/skyball_pipeline/evaluation_full10_h_primary30fps_20260806_v1/eval_ncaa_001_florida_texas/eval_ncaa_001_florida_texas.mp4",
+      "gt_sync_csv": "/mnt/t/output/skyball_pipeline/evaluation_full10_h_primary30fps_20260806_v1/eval_ncaa_001_florida_texas/eval_ncaa_001_florida_texas_gt_synced.csv",
+      "match": "eval_ncaa_001_florida_texas",
+      "gt_sha256": "c20b7394e6e65292941fcec03c0e9623ab22ed188fddbc4de80b411b422a08c1",
+      "video_size_bytes": 2885705198
+    },
+    {
+      "video": "/mnt/t/output/skyball_pipeline/evaluation_full10_h_primary30fps_20260806_v1/eval_ncaa_002_pittsburgh_purdue/eval_ncaa_002_pittsburgh_purdue.mp4",
+      "gt_sync_csv": "/mnt/t/output/skyball_pipeline/evaluation_full10_h_primary30fps_20260806_v1/eval_ncaa_002_pittsburgh_purdue/eval_ncaa_002_pittsburgh_purdue_gt_synced.csv",
+      "match": "eval_ncaa_002_pittsburgh_purdue",
+      "gt_sha256": "dcde6d55cc7955cda28f1c1d8b8f48916c0eb38357226bb70adf390ae661022b",
+      "video_size_bytes": 2713473857
+    },
+    {
+      "video": "/mnt/t/output/skyball_pipeline/evaluation_full10_h_primary30fps_20260806_v1/eval_ncaa_003_wisconsin_usc/eval_ncaa_003_wisconsin_usc.mp4",
+      "gt_sync_csv": "/mnt/t/output/skyball_pipeline/evaluation_full10_h_primary30fps_20260806_v1/eval_ncaa_003_wisconsin_usc/eval_ncaa_003_wisconsin_usc_gt_synced.csv",
+      "match": "eval_ncaa_003_wisconsin_usc",
+      "gt_sha256": "a073f97c7df1919c609e9400797a595758e5c47063e0bbdaaa26d147ca41ca7c",
+      "video_size_bytes": 6450378872
+    },
+    {
+      "video": "/mnt/t/output/skyball_pipeline/evaluation_full10_h_primary30fps_20260806_v1/eval_ncaa_004_stanford_arizona/eval_ncaa_004_stanford_arizona.mp4",
+      "gt_sync_csv": "/mnt/t/output/skyball_pipeline/evaluation_full10_h_primary30fps_20260806_v1/eval_ncaa_004_stanford_arizona/eval_ncaa_004_stanford_arizona_gt_synced.csv",
+      "match": "eval_ncaa_004_stanford_arizona",
+      "gt_sha256": "20de2feb1e007ca31eb395c94c0137c8f01eff76c3e044159ba4145adf2c5ebe",
+      "video_size_bytes": 2145454064
+    },
+    {
+      "video": "/mnt/t/output/skyball_pipeline/evaluation_full10_h_primary30fps_20260806_v1/eval_ncaa_005_usc_ucla/eval_ncaa_005_usc_ucla.mp4",
+      "gt_sync_csv": "/mnt/t/output/skyball_pipeline/evaluation_full10_h_primary30fps_20260806_v1/eval_ncaa_005_usc_ucla/eval_ncaa_005_usc_ucla_gt_synced.csv",
+      "match": "eval_ncaa_005_usc_ucla",
+      "gt_sha256": "83d6f1d90b402cc3acd0fa2d32ef460e6202db93aa40482583a36b288d189427",
+      "video_size_bytes": 3505203757
+    }
+  ]
+}

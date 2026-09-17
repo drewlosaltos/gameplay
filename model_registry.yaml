@@ -139,3 +139,66 @@ notes:
   - The stored source JPEGs use the current 1024-pixel-long-edge extraction contract.
   - Use threshold 0.5 for argmax-style visual review; use the listed threshold for leaderboard reporting.
   - The classifier validation threshold and full-video temporal gate threshold serve different purposes and must not be interchanged.
+
+# Selected indoor successor; current deployed entry remains above until pipeline acceptance.
+recommended_candidate: {
+  "model_id": "human_v0_siglip512_fullcourt_staged_20260916",
+  "status": "user_selected_qualified_candidate",
+  "production": false,
+  "pipeline_status": "pending_current_release_end_to_end_acceptance",
+  "selected_at": "2026-09-16",
+  "checkpoint": "/mnt/t/output/trn/skyball_gameplay/human_app_v0_siglip512_after_fullcourt_v5_20260916/best_siglip512_staged_human.pth.tar",
+  "checkpoint_sha256": "18a9226e3c466acffb70755cf0d244b64258960904d4ab502a7a7f088256b3f7",
+  "launcher": "scripts/train_two_stage_fullframe.py",
+  "human_f1": 0.9601745771958539,
+  "legacy_f1": 0.9386653581943082,
+  "combined_f1": 0.940839168550477,
+  "classifier_threshold": 0.5,
+  "policy": {
+    "threshold": 0.15,
+    "merge_gap_sec": 0,
+    "pad_before_sec": 10,
+    "pad_after_sec": 10
+  },
+  "full_video_gameplay_gate": {
+    "contract_id": "gameplay_gate_eval10_v2",
+    "status": "pass",
+    "annotated_gameplay_recall": 1.0,
+    "confirmed_gt_action_recall": 1.0,
+    "confirmed_gt_actions": 8848,
+    "rally_full_coverage_recall": 1.0,
+    "rallies": 1370,
+    "matched_true_actions": 8318,
+    "matched_true_actions_rejected": 0,
+    "valid_predicted_plays": 1395,
+    "valid_predicted_plays_rejected": 0,
+    "outside_3s_action_fp_current": 114,
+    "outside_3s_action_fp_rejected": 94,
+    "outside_3s_action_fp_remaining": 20,
+    "outside_3s_action_fp_rejected_fraction": 0.8245614035087719,
+    "impact_report": "/mnt/t/output/skyball_gameplay/model_publication_human_v0_staged_20260916/human_v0_siglip512_fullcourt_staged_20260916/evidence/full_video_gate/pipeline_fp_impact.json",
+    "validation_result": "/mnt/t/output/skyball_gameplay/model_publication_human_v0_staged_20260916/human_v0_siglip512_fullcourt_staged_20260916/evidence/full_video_gate/validation_result.json"
+  },
+  "canonical_full10": {
+    "contract": "validation/gameplay_event_coverage_full10_v1.json",
+    "events_excluded": 0,
+    "events": 8848,
+    "extra_footage_pct_match": 46.4249413062336,
+    "metrics": "/mnt/t/output/skyball_gameplay/model_publication_human_v0_staged_20260916/reproducibility_full10/metrics.json",
+    "same_policy_old_events_excluded": 13
+  },
+  "runtime": {
+    "onnx_status": "validated",
+    "tensorrt_status": "strict_fp32_parity_pass",
+    "onnx": "/mnt/t/output/skyball_gameplay/model_publication_human_v0_staged_20260916/human_v0_siglip512_fullcourt_staged_20260916/model.onnx",
+    "tensorrt_parity_evidence": "/mnt/t/output/skyball_gameplay/model_publication_human_v0_staged_20260916/human_v0_siglip512_fullcourt_staged_20260916/evidence/tensorrt_parity_multiwindow_strict_reference.json",
+    "tf32_enabled": false,
+    "parity_windows": 41,
+    "gate_disagreements": 0,
+    "max_probability_difference": 3.516674041748047e-06
+  },
+  "artifact_bundle": "/mnt/t/output/skyball_gameplay/model_publication_human_v0_staged_20260916/human_v0_siglip512_fullcourt_staged_20260916",
+  "intended_remote_path": "googdrive:skyball/checkpoints/gameplay/human_v0_siglip512_fullcourt_staged_20260916",
+  "training_progression": "workflows/human_gameplay_finetune_v0.md",
+  "selection_caveat": "Both human classification and full10 informed selection; neither is an independent final test."
+}

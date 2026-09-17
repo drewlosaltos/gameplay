@@ -1,0 +1,337 @@
+{
+  "status": "complete",
+  "model_id": "staged_human_finetune",
+  "checkpoint": "/mnt/t/output/trn/skyball_gameplay/human_app_v0_siglip512_after_fullcourt_v5_20260916/best_siglip512_staged_human.pth.tar",
+  "checkpoint_sha256": "18a9226e3c466acffb70755cf0d244b64258960904d4ab502a7a7f088256b3f7",
+  "human_validation": {
+    "accuracy": 0.9485915492957746,
+    "balanced_accuracy": 0.9424799790879494,
+    "precision": 0.9565217391304348,
+    "recall": 0.963855421686747,
+    "f1": 0.9601745771958539,
+    "roc_auc": 0.9839054982706512,
+    "confusion": {
+      "tn": 467,
+      "fp": 40,
+      "fn": 33,
+      "tp": 880
+    },
+    "count": 1420,
+    "positive_count": 913,
+    "negative_count": 507
+  },
+  "human_threshold": 0.5,
+  "legacy_validation": {
+    "old": {
+      "accuracy": 0.9382278481012658,
+      "balanced_accuracy": 0.9380270403682311,
+      "precision": 0.9287801314828342,
+      "recall": 0.9512468827930175,
+      "f1": 0.9398792657385735,
+      "roc_auc": 0.9704778702344397,
+      "confusion": {
+        "tn": 7195,
+        "fp": 585,
+        "fn": 391,
+        "tp": 7629
+      },
+      "count": 15800,
+      "positive_count": 8020,
+      "negative_count": 7780
+    },
+    "candidate": {
+      "accuracy": 0.9367088607594937,
+      "balanced_accuracy": 0.936440390027502,
+      "precision": 0.9237083534524384,
+      "recall": 0.9541147132169576,
+      "f1": 0.9386653581943082,
+      "roc_auc": 0.970897202687369,
+      "confusion": {
+        "tn": 7148,
+        "fp": 632,
+        "fn": 368,
+        "tp": 7652
+      },
+      "count": 15800,
+      "positive_count": 8020,
+      "negative_count": 7780
+    }
+  },
+  "combined_validation": {
+    "old": {
+      "accuracy": 0.9345528455284553,
+      "balanced_accuracy": 0.9341966341253203,
+      "precision": 0.9310801855533466,
+      "recall": 0.9436919288033135,
+      "f1": 0.937343637071218,
+      "roc_auc": 0.9705011852916657,
+      "confusion": {
+        "tn": 7663,
+        "fp": 624,
+        "fn": 503,
+        "tp": 8430
+      },
+      "count": 17220,
+      "positive_count": 8933,
+      "negative_count": 8287
+    },
+    "candidate": {
+      "accuracy": 0.9376887340301975,
+      "balanced_accuracy": 0.9370097000489181,
+      "precision": 0.9269882659713168,
+      "recall": 0.955110265308407,
+      "f1": 0.940839168550477,
+      "roc_auc": 0.9718392574592041,
+      "confusion": {
+        "tn": 7615,
+        "fp": 672,
+        "fn": 401,
+        "tp": 8532
+      },
+      "count": 17220,
+      "positive_count": 8933,
+      "negative_count": 8287
+    }
+  },
+  "full_video_gate": {
+    "model": "staged_human_finetune",
+    "checkpoint": "/mnt/t/output/trn/skyball_gameplay/human_app_v0_siglip512_after_fullcourt_v5_20260916/best_siglip512_staged_human.pth.tar",
+    "report": "/mnt/t/output/skyball_gameplay/human_app_v0_two_stage_20260916/gate_best/thr0.15_gap0_pre10_post10/pipeline_fp_impact.json",
+    "validation": "/mnt/t/output/skyball_gameplay/human_app_v0_two_stage_20260916/gate_best/selected_gate_result.json",
+    "policy": {
+      "threshold": 0.15,
+      "merge_gap_sec": 0.0,
+      "pad_before_sec": 10,
+      "pad_after_sec": 10
+    },
+    "aggregate": {
+      "gameplay": {
+        "video_duration_seconds": 58112.403897,
+        "annotated_gameplay_seconds": 16535.239100000017,
+        "covered_gameplay_seconds": 16535.239100000017,
+        "missed_gameplay_seconds": 0.0,
+        "events": 8848,
+        "covered_events": 8848,
+        "rallies": 1370,
+        "fully_covered_rallies": 1370,
+        "retained_total_seconds": 43493.28263,
+        "excluded_video_seconds": 14619.121266999999,
+        "annotation_negative_seconds": 41577.16479699998,
+        "retained_annotation_negative_seconds": 26958.043529999984,
+        "predicted_intervals": 147,
+        "annotated_gameplay_recall": 1.0,
+        "event_recall": 1.0,
+        "rally_full_coverage_recall": 1.0,
+        "retained_video_fraction": 0.7484337200555096,
+        "excluded_video_fraction": 0.25156627994449043,
+        "retained_annotation_negative_fraction": 0.6483858065267873
+      },
+      "action_false_positives": {
+        "current": 531,
+        "rejected": 94,
+        "remaining": 437,
+        "rejected_fraction": 0.17702448210922786
+      },
+      "outside_gt_event_margin_action_false_positives": {
+        "definition": "unmatched predicted action more than 3 seconds from every confirmed synchronized GT action",
+        "current": 114,
+        "rejected": 94,
+        "remaining": 20,
+        "rejected_fraction": 0.8245614035087719
+      },
+      "unmatched_predictions_within_gt_event_margin": 417,
+      "matched_true_actions": {
+        "current": 8318,
+        "rejected": 0,
+        "remaining": 8318
+      },
+      "invalid_predicted_plays": {
+        "current": 47,
+        "rejected": 37,
+        "remaining": 10,
+        "rejected_fraction": 0.7872340425531915
+      },
+      "valid_predicted_plays": {
+        "current": 1395,
+        "rejected": 0,
+        "remaining": 1395
+      }
+    },
+    "safe_policies_in_grid": 36,
+    "policies_searched": 63,
+    "gate_status": "pass"
+  },
+  "legacy_adaptation_epoch_history": [
+    {
+      "epoch": 1,
+      "selected": true,
+      "selection_metric": "f1",
+      "accuracy": 0.9290506329113924,
+      "count": 15800,
+      "confusion": [
+        [
+          6912,
+          868
+        ],
+        [
+          253,
+          7767
+        ]
+      ],
+      "f1": 0.9326928850195136,
+      "balanced_accuracy": 0.928442870971671,
+      "precision": 0.8994788650839606,
+      "recall": 0.9684538653366583
+    },
+    {
+      "epoch": 2,
+      "selected": true,
+      "selection_metric": "f1",
+      "accuracy": 0.9335443037974683,
+      "count": 15800,
+      "confusion": [
+        [
+          7015,
+          765
+        ],
+        [
+          285,
+          7735
+        ]
+      ],
+      "f1": 0.9364406779661016,
+      "balanced_accuracy": 0.9330673957779074,
+      "precision": 0.91,
+      "recall": 0.9644638403990025
+    }
+  ],
+  "human_finetune_epoch_history": [
+    {
+      "epoch": 1,
+      "selected": true,
+      "selection_metric": "f1",
+      "accuracy": 0.9485915492957746,
+      "count": 1420,
+      "confusion": [
+        [
+          467,
+          40
+        ],
+        [
+          33,
+          880
+        ]
+      ],
+      "f1": 0.9601745771958538,
+      "balanced_accuracy": 0.9424799790879494,
+      "precision": 0.9565217391304348,
+      "recall": 0.963855421686747
+    },
+    {
+      "epoch": 2,
+      "selected": false,
+      "selection_metric": "f1",
+      "accuracy": 0.8943661971830986,
+      "count": 1420,
+      "confusion": [
+        [
+          490,
+          17
+        ],
+        [
+          133,
+          780
+        ]
+      ],
+      "f1": 0.9122807017543859,
+      "balanced_accuracy": 0.9103979122514804,
+      "precision": 0.9786700125470514,
+      "recall": 0.8543263964950711
+    },
+    {
+      "epoch": 3,
+      "selected": false,
+      "selection_metric": "f1",
+      "accuracy": 0.9204225352112676,
+      "count": 1420,
+      "confusion": [
+        [
+          482,
+          25
+        ],
+        [
+          88,
+          825
+        ]
+      ],
+      "f1": 0.9359047078842881,
+      "balanced_accuracy": 0.9271523965685227,
+      "precision": 0.9705882352941176,
+      "recall": 0.9036144578313253
+    },
+    {
+      "epoch": 4,
+      "selected": false,
+      "selection_metric": "f1",
+      "accuracy": 0.9133802816901408,
+      "count": 1420,
+      "confusion": [
+        [
+          482,
+          25
+        ],
+        [
+          98,
+          815
+        ]
+      ],
+      "f1": 0.9298345693097547,
+      "balanced_accuracy": 0.9216759453089388,
+      "precision": 0.9702380952380952,
+      "recall": 0.8926615553121577
+    }
+  ],
+  "direct_comparison": "/mnt/t/output/skyball_gameplay/human_app_v0_rnd_20260916/result.json",
+  "human_f1_delta_vs_direct_pp": 0.6379197657900071,
+  "source_labels_changed": false,
+  "production_registry_changed": false,
+  "caveat": "The human validation set selected epochs and experiments; gate policies were selected retrospectively on the fixed ten videos. No deployment or runtime export.",
+  "legacy_stage_before_human_finetune_on_human_validation": {
+    "accuracy": 0.9126760563380282,
+    "balanced_accuracy": 0.9106031441527271,
+    "confusion": {
+      "fn": 75,
+      "fp": 49,
+      "tn": 458,
+      "tp": 838
+    },
+    "count": 1420,
+    "f1": 0.9311111111111111,
+    "negative_count": 507,
+    "positive_count": 913,
+    "precision": 0.9447576099210823,
+    "recall": 0.9178532311062432,
+    "roc_auc": 0.9752987204331042
+  },
+  "calibration_diagnostic": "/mnt/t/output/skyball_gameplay/human_app_v0_rnd_20260916/calibration_diagnostic.json",
+  "canonical_full10": {
+    "contract": "validation/gameplay_event_coverage_full10_v1.json",
+    "events_excluded": 0,
+    "events": 8848,
+    "extra_footage_pct_match": 46.4249413062336,
+    "metrics": "/mnt/t/output/skyball_gameplay/model_publication_human_v0_staged_20260916/reproducibility_full10/metrics.json",
+    "same_policy_old_events_excluded": 13
+  },
+  "runtime_parity": {
+    "onnx_status": "validated",
+    "tensorrt_status": "strict_fp32_parity_pass",
+    "onnx": "/mnt/t/output/skyball_gameplay/model_publication_human_v0_staged_20260916/human_v0_siglip512_fullcourt_staged_20260916/model.onnx",
+    "tensorrt_parity_evidence": "/mnt/t/output/skyball_gameplay/model_publication_human_v0_staged_20260916/human_v0_siglip512_fullcourt_staged_20260916/evidence/tensorrt_parity_multiwindow_strict_reference.json",
+    "tf32_enabled": false,
+    "parity_windows": 41,
+    "gate_disagreements": 0,
+    "max_probability_difference": 3.516674041748047e-06
+  },
+  "production": false,
+  "pipeline_status": "pending_current_release_end_to_end_acceptance"
+}

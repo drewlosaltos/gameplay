@@ -198,7 +198,13 @@ recommended_candidate: {
     "max_probability_difference": 3.516674041748047e-06
   },
   "artifact_bundle": "/mnt/t/output/skyball_gameplay/model_publication_human_v0_staged_20260916/human_v0_siglip512_fullcourt_staged_20260916",
-  "intended_remote_path": "googdrive:skyball/checkpoints/gameplay/human_v0_siglip512_fullcourt_staged_20260916",
   "training_progression": "workflows/human_gameplay_finetune_v0.md",
-  "selection_caveat": "Both human classification and full10 informed selection; neither is an independent final test."
+  "selection_caveat": "Both human classification and full10 informed selection; neither is an independent final test.",
+  "publication_status": "published_verified",
+  "publication": {
+    "remote_path": "googdrive:skyball/checkpoints/gameplay/human_v0_siglip512_fullcourt_staged_20260916",
+    "artifact_manifest_sha256": "e0b88e352219a5dcbdc0b013e86d50a73fb1ae6223d2b8e8a7bbaec52d5b9ffb",
+    "verified_at": "2026-09-17T05:33:41.044017+00:00",
+    "files": 72
+  }
 }

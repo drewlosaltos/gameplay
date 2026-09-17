@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "model_id": "human_v0_siglip512_fullcourt_staged_20260916",
+  "status": "published_verified",
+  "verified_at": "2026-09-17T05:33:41.044017+00:00",
+  "remote_path": "googdrive:skyball/checkpoints/gameplay/human_v0_siglip512_fullcourt_staged_20260916",
+  "artifact_manifest_sha256": "e0b88e352219a5dcbdc0b013e86d50a73fb1ae6223d2b8e8a7bbaec52d5b9ffb",
+  "checkpoint_sha256": "18a9226e3c466acffb70755cf0d244b64258960904d4ab502a7a7f088256b3f7",
+  "canonical_recipe_commit": "5e2a9fd63c91ca7687418386b4e1bbe798a50f5c",
+  "files": 72,
+  "remote_check": "rclone checksum check: 72 matching files; zero differences, missing or extra files",
+  "remote_check_report": "/mnt/t/output/skyball_gameplay/model_publication_human_v0_staged_20260916/remote_check.txt",
+  "training_progression": "TRAINING_PROGRESSION.md",
+  "provenance": "training_provenance.json",
+  "production_activated": false,
+  "pipeline_acceptance": "pending; GPUs released for user training",
+  "pending_plan": "/mnt/t/output/skyball_gameplay/model_publication_human_v0_staged_20260916/pending_pipeline_acceptance.json"
+}

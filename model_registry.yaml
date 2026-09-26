@@ -359,9 +359,9 @@ best_model: &qwen_v5_candidate
   model_id: human_app_v5_qwen672x384_rotate5_e4_20260925_r1
   status: production_selected
   production: true
-  pipeline_status: full10_acceptance_running
+  pipeline_status: full10_completed_reconciled
   production_release: skyball-prod-20260926-r1
-  qualification_status: classification_full_video_gate_and_pipeline_smoke_passed
+  qualification_status: classification_full_video_gate_and_pipeline_full10_completed
   selected_at: "2026-09-26"
   selection_metric: safe full-video gate and frozen human-validation F1
   f1: 0.951375356867721
@@ -417,5 +417,22 @@ best_model: &qwen_v5_candidate
     catalog_pointer: recommended.gameplay
     files: 11
   selection_caveat: The same full10 matches were used to select and assess the temporal policy.
+  pipeline_full10:
+    matches: 10
+    status: complete_reconciled
+    comparison_baseline: /mnt/t/output/skyball_pipeline/model_builds/s3r_qwen_compositional_stage2_trt_full10_20260925_r1/full_pipeline
+    mean_skill_f1: 0.9357382139484178
+    mean_identity_f1: 0.8867246251258802
+    mean_combined_f1: 0.8778891758224913
+    baseline_mean_skill_f1: 0.9355796786102173
+    baseline_mean_identity_f1: 0.8869871279834998
+    baseline_mean_combined_f1: 0.8780254503803613
+    gt_actions: 8848
+    matched_actions: 8349
+    gt_rallies: 1370
+    matched_rallies: 1365
+    invalid_predicted_plays: 22
+    evidence: /mnt/t/output/skyball_pipeline/evaluation_suite_qwen_gameplay_v5_20260926_r2/acceptance_validation.json
+    caveat: Same detector, jersey and ReID weights, but prior suite reused upstream output and used another ReID query policy.
 
 recommended_candidate: *qwen_v5_candidate

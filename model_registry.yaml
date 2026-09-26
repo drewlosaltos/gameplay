@@ -3,14 +3,14 @@
 # Training recipes and their separate qualification scopes are documented in README.md.
 
 schema_version: 2
-updated_at: "2026-09-17"
+updated_at: "2026-09-26"
 
-best_model:
+previous_production_model:
   model_id: v5_siglip_base_f4_avg_h512w512_step4s2_lr1e4_blr5e6_20260719
-  status: production_selected
+  status: superseded
   qualification_status: validation_and_full_video_gate_qualified
   pipeline_status: promoted_skyball-prod-20260719-r1
-  production: true
+  production: false
   production_release: skyball-prod-20260719-r1
   selection_metric: safe full-video outside-3-second FP rejection, with combined validation F1 reported jointly
   f1: 0.9404872032069072
@@ -244,12 +244,12 @@ notes:
   - The beach-domain production selection is a PyTorch checkpoint and does not yet have ONNX/TensorRT publication artifacts.
   - The classifier validation threshold and full-video temporal gate threshold serve different purposes and must not be interchanged.
 
-# Selected indoor successor; current deployed entry remains above until pipeline acceptance.
-recommended_candidate: {
+# Earlier indoor production model retained for historical comparisons.
+historical_production_model: &historical_indoor {
   "model_id": "human_v0_siglip512_fullcourt_staged_20260916",
-  "status": "user_selected_qualified_candidate",
+  "status": "superseded",
   "production": false,
-  "pipeline_status": "pending_current_release_end_to_end_acceptance",
+  "pipeline_status": "promoted_skyball-prod-20260917-r1",
   "selected_at": "2026-09-16",
   "checkpoint": "/mnt/t/output/trn/skyball_gameplay/human_app_v0_siglip512_after_fullcourt_v5_20260916/best_siglip512_staged_human.pth.tar",
   "checkpoint_sha256": "18a9226e3c466acffb70755cf0d244b64258960904d4ab502a7a7f088256b3f7",
@@ -281,7 +281,13 @@ recommended_candidate: {
     "outside_3s_action_fp_remaining": 20,
     "outside_3s_action_fp_rejected_fraction": 0.8245614035087719,
     "impact_report": "/mnt/t/output/skyball_gameplay/model_publication_human_v0_staged_20260916/human_v0_siglip512_fullcourt_staged_20260916/evidence/full_video_gate/pipeline_fp_impact.json",
-    "validation_result": "/mnt/t/output/skyball_gameplay/model_publication_human_v0_staged_20260916/human_v0_siglip512_fullcourt_staged_20260916/evidence/full_video_gate/validation_result.json"
+    "validation_result": "/mnt/t/output/skyball_gameplay/model_publication_human_v0_staged_20260916/human_v0_siglip512_fullcourt_staged_20260916/evidence/full_video_gate/validation_result.json",
+    "policy": {
+      "threshold": 0.15,
+      "merge_gap_sec": 0,
+      "pad_before_sec": 10,
+      "pad_after_sec": 10
+    }
   },
   "canonical_full10": {
     "contract": "validation/gameplay_event_coverage_full10_v1.json",
@@ -299,7 +305,17 @@ recommended_candidate: {
     "tf32_enabled": false,
     "parity_windows": 41,
     "gate_disagreements": 0,
-    "max_probability_difference": 3.516674041748047e-06
+    "max_probability_difference": 3.516674041748047e-06,
+    "tensorrt_compatible": true,
+    "input_shape": [
+      "batch",
+      4,
+      3,
+      512,
+      512
+    ],
+    "onnx_sha256": "2a3d70f6aa379c06556895338a0a33eb543a5826802f60d06c0a77f2c5509f0d",
+    "onnx_parity_evidence": "/mnt/t/output/skyball_gameplay/model_publication_human_v0_staged_20260916/human_v0_siglip512_fullcourt_staged_20260916/evidence/onnx_parity.json"
   },
   "artifact_bundle": "/mnt/t/output/skyball_gameplay/model_publication_human_v0_staged_20260916/human_v0_siglip512_fullcourt_staged_20260916",
   "training_progression": "workflows/human_gameplay_finetune_v0.md",
@@ -310,5 +326,96 @@ recommended_candidate: {
     "artifact_manifest_sha256": "e0b88e352219a5dcbdc0b013e86d50a73fb1ae6223d2b8e8a7bbaec52d5b9ffb",
     "verified_at": "2026-09-17T05:33:41.044017+00:00",
     "files": 72
+  },
+  "production_release": "skyball-prod-20260917-r1",
+  "qualification_status": "classification_full_video_gate_and_pipeline_full10_accepted",
+  "f1": 0.940839168550477,
+  "threshold": 0.5,
+  "pipeline_acceptance": {
+    "release": "skyball-prod-20260917-r1",
+    "approved_by": "user",
+    "approved_at": "2026-09-17",
+    "validation": "/mnt/t/output/skyball_pipeline/evaluation_suites/xl_cnf_human_v0_gameplay_full10_20260917_r2/acceptance_validation.json",
+    "promotion": "/home/atao/vsdevel/skyball/pipeline/docs/promotion_cnf_human_gameplay_20260917.md",
+    "skill_f1": 0.9355796786102173,
+    "identity_f1": 0.8763730950745218,
+    "combined_f1": 0.8674064439533287,
+    "events_excluded": 0,
+    "events": 8848,
+    "rallies_fully_preserved": 1370
   }
 }
+
+prior_production_model:
+  model_id: human_app_v2_1_siglip512_coarse_val20_20260921_r1
+  status: superseded
+  production: false
+  production_release: skyball-prod-20260921-r1
+  checkpoint: /mnt/t/output/trn/skyball_gameplay/human_app_v2_1_val20_siglip512_stage2_b128_20260921_r1/best_siglip512_app_v2_1_val20_b128.pth.tar
+  policy: {threshold: 0.15, merge_gap_sec: 0.0, pad_before_sec: 10.0, pad_after_sec: 10.0}
+  publication: googdrive:skyball/checkpoints/gameplay/human_app_v2_1_siglip512_coarse_val20_20260921_r1
+
+best_model: &qwen_v5_candidate
+  model_id: human_app_v5_qwen672x384_rotate5_e4_20260925_r1
+  status: production_selected
+  production: true
+  pipeline_status: full10_acceptance_running
+  production_release: skyball-prod-20260926-r1
+  qualification_status: classification_full_video_gate_and_pipeline_smoke_passed
+  selected_at: "2026-09-26"
+  selection_metric: safe full-video gate and frozen human-validation F1
+  f1: 0.951375356867721
+  human_validation_f1: 0.9658584858980703
+  legacy_validation_f1: 0.9458885278680331
+  threshold: 0.5
+  checkpoint: /mnt/t/output/trn/skyball_gameplay/human_app_v5_val20_qwen672x384_rotate5_e4_2gpu_b4a2_20260925_r1/best_qwen672x384_v5_e4_2gpu_b4a2.pth.tar
+  checkpoint_sha256: f8810e9a8dd421ef3dfe5c546da0af7a7bf41ecb43f5cc840c12ad461f073dc7
+  training_recipe: scripts/train_qwen_v5_canonical.py
+  training_dataset: /mnt/t/data/vball/skyball/gameplay/human_app_v5_val20_20260925
+  validation:
+    human: /mnt/t/output/skyball_gameplay/human_app_v5_qwen672x384_2gpu_20260925_r1/human/metrics.json
+    legacy: /mnt/t/output/skyball_gameplay/human_app_v5_qwen672x384_2gpu_20260925_r1/legacy/metrics.json
+    human_windows: 4828
+    frozen_human_videos: 20
+  full_video_gameplay_gate:
+    contract_id: gameplay_gate_eval10_v2
+    status: pass
+    evaluation_matches: 10
+    confirmed_gt_actions: 8848
+    rallies: 1370
+    matched_true_actions: 8318
+    valid_predicted_plays: 1395
+    annotated_gameplay_recall: 1.0
+    confirmed_gt_action_recall: 1.0
+    rally_full_coverage_recall: 1.0
+    matched_true_actions_rejected: 0
+    valid_predicted_plays_rejected: 0
+    outside_3s_action_fp_current: 114
+    outside_3s_action_fp_rejected: 94
+    outside_3s_action_fp_remaining: 20
+    outside_3s_action_fp_rejected_fraction: 0.8245614035087719
+    outside_event_footage_percent_total_match: 45.19495097909407
+    policy: {threshold: 0.5, merge_gap_sec: 0.0, pad_before_sec: 20.0, pad_after_sec: 20.0}
+    impact_report: /mnt/t/output/skyball_gameplay/human_app_v5_qwen672x384_2gpu_20260925_r1/selected_policy/pipeline_fp_impact.json
+    validation_result: /mnt/t/output/skyball_gameplay/human_app_v5_qwen672x384_2gpu_20260925_r1/selected_policy/validation_gate_result.json
+    event_coverage: /mnt/t/output/skyball_gameplay/human_app_v5_qwen672x384_2gpu_20260925_r1/event_coverage_selected_050_20/metrics.json
+  runtime:
+    backend: pytorch_qwen
+    precision: fp32
+    tf32_enabled: false
+    input_shape: [batch, 4, 3, 384, 672]
+    preprocessing: letterbox_bilinear_gray128
+    weights: /mnt/t/output/skyball_gameplay/qwen_v5_publication_20260926_r1/human_app_v5_qwen672x384_rotate5_e4_20260925_r1/model.safetensors
+    weights_sha256: 5724661b9e48b6d80640f818dfcbb3cde36ff1559e58068e5f1e1ae46cd99311
+    onnx_status: exported_but_not_deployable
+    tensorrt_compatible: false
+    parity_evidence: /mnt/t/output/skyball_gameplay/qwen_v5_publication_20260926_r1/smoke_pac_30s/gameplay_scores.csv
+  publication_status: published_verified
+  publication:
+    remote_path: googdrive:skyball/checkpoints/gameplay/human_app_v5_qwen672x384_rotate5_e4_20260925_r1
+    artifact_manifest_sha256: fa38aa1116913b0cff4eb24358451b44405a0959112f3523f82611435471fadd
+    catalog_pointer: recommended.gameplay
+    files: 11
+  selection_caveat: The same full10 matches were used to select and assess the temporal policy.
+
+recommended_candidate: *qwen_v5_candidate

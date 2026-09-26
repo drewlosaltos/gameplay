@@ -11,6 +11,7 @@ import torch
 import torchvision.datasets
 import torchvision.transforms as transforms
 from torchvision.datasets.folder import default_loader
+from .preprocessing import LetterboxResize
 
 
 def load_classes(
@@ -251,10 +252,26 @@ def build_transforms(args: Any) -> tuple[Any, Any]:
             scale=(args.crop_scale_min, 1.0),
         )
     )
+    if getattr(args, 'resize_mode', 'stretch') == 'letterbox':
+        if getattr(args, 'train_geometry', 'random_crop') != 'full_frame':
+            raise ValueError('Letterbox requires full_frame training geometry')
+        geometry = LetterboxResize(args.image_size)
+    validation_geometry = (LetterboxResize(args.image_size)
+                           if getattr(args, 'resize_mode', 'stretch') == 'letterbox'
+                           else transforms.Resize(tuple(args.image_size)))
     train_steps: list[Any] = [
         geometry,
         transforms.RandomHorizontalFlip(),
     ]
+    rotation = float(getattr(args, 'rotation_degrees', 0.0))
+    if rotation < 0:
+        raise ValueError('rotation-degrees must be non-negative')
+    if rotation:
+        train_steps.append(transforms.RandomAffine(
+            degrees=rotation,
+            interpolation=transforms.InterpolationMode.BILINEAR,
+            fill=128,
+        ))
     policy = build_policy_transform(
         aug_policy=args.aug_policy,
         auto_augment_policy=args.auto_augment_policy,
@@ -280,7 +297,7 @@ def build_transforms(args: Any) -> tuple[Any, Any]:
         transforms.Compose(train_steps),
         transforms.Compose(
             [
-                transforms.Resize(tuple(args.image_size)),
+                validation_geometry,
                 transforms.ToTensor(),
                 normalize,
             ]

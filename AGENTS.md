@@ -39,7 +39,13 @@ the Google Drive version name in local outputs.
 3. Stop for user review before extracting the full training dataset.
 4. After approval, extract an ImageNet-style frame dataset under
    `/mnt/t/data/vball/skyball/gameplay/vN`.
-5. Canonical indoor training is **two-stage full-frame SigLIP-Base**:
+5. Canonical indoor training is now **Qwen3.6 vision 672x384 v5**. Use
+   `scripts/train_qwen_v5_canonical.py` and the reviewed frozen-val20 v5
+   dataset. Initialize from the selected Qwen legacy-adaptation checkpoint,
+   fine-tune all layers for four epochs, and select by human-validation F1.
+   Use four frames at 1 Hz, letterbox geometry, shared flips and +/-5-degree
+   rotation, light color jitter, effective batch 8, and the exact launcher
+   settings. The former SigLIP recipe is retained as a reproducible baseline:
    - Adapt an explicitly identified gameplay checkpoint on the legacy training
      split for two epochs, selecting by legacy-validation F1.
    - Fine-tune that checkpoint exclusively on human training data for four

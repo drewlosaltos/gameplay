@@ -107,8 +107,22 @@ def create_gameplay_model(
     num_classes: int,
     temporal_dropout: float = 0.0,
     pretrained: bool = False,
+    qwen_snapshot: str = "",
+    image_size: tuple[int, int] | list[int] = (512, 512),
 ) -> torch.nn.Module:
     """Create the model layout used by historical gameplay checkpoints."""
+    if qwen_snapshot:
+        if timm_model or input_frames != 4:
+            raise ValueError('Qwen gameplay requires four frames and no timm backbone')
+        from .qwen_vision import QwenFrameEncoder
+        model = TemporalFeatureAveragePoolClassifier(
+            QwenFrameEncoder(qwen_snapshot, image_size), 2048, num_classes, temporal_dropout,
+        )
+        model.classifier = torch.nn.Sequential(
+            torch.nn.LayerNorm(2048), torch.nn.Linear(2048, 384), torch.nn.GELU(),
+            torch.nn.Linear(384, num_classes),
+        )
+        return model
     if timm_model:
         if input_frames != 4:
             raise ValueError("timm gameplay models require four-frame input")
@@ -171,6 +185,9 @@ def checkpoint_metadata(checkpoint: dict[str, Any]) -> dict[str, Any]:
         "normalization_std": list(std),
         "temporal_dropout": float(checkpoint.get("temporal_dropout", 0.0)),
         "checkpoint_epoch": int(checkpoint.get("epoch", -1)),
+        "qwen_snapshot": str(checkpoint.get("qwen_snapshot") or ""),
+        "resize_mode": str(checkpoint.get("resize_geometry", checkpoint.get("resize_mode", "stretch"))),
+        "resize_geometry": str(checkpoint.get("resize_geometry", checkpoint.get("resize_mode", "stretch"))),
     }
 
 
@@ -198,6 +215,8 @@ def load_checkpoint_model(
         num_classes=metadata["num_classes"],
         temporal_dropout=metadata["temporal_dropout"],
         pretrained=False,
+        qwen_snapshot=metadata["qwen_snapshot"],
+        image_size=metadata["image_size"],
     )
     model.load_state_dict(strip_module_prefix(checkpoint["state_dict"]))
     model.to(device)

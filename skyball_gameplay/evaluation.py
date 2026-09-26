@@ -18,6 +18,7 @@ from .data import EvaluationDataset
 from .data import load_classes
 from .modeling import load_checkpoint_model
 from .modeling import normalization_for_backbone
+from .preprocessing import LetterboxResize
 
 
 DEFAULT_PREFETCH_BUDGET_GIB = 8.0
@@ -311,7 +312,7 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
     else:
         transform = transforms.Compose(
             [
-                transforms.Resize(tuple(image_size)),
+                LetterboxResize(image_size) if metadata['resize_mode']=='letterbox' else transforms.Resize(tuple(image_size)),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=mean, std=std),
             ]

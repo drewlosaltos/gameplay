@@ -24,23 +24,25 @@ def test_best_model_records_classifier_and_full_video_gate_metrics() -> None:
     assert gate["matched_true_actions_rejected"] == 0
     assert gate["valid_predicted_plays_rejected"] == 0
     assert gate["outside_3s_action_fp_current"] == 114
-    assert gate["outside_3s_action_fp_rejected"] == 92
-    assert gate["outside_3s_action_fp_remaining"] == 22
-    assert gate["outside_3s_action_fp_rejected_fraction"] == 92 / 114
+    assert gate["outside_3s_action_fp_rejected"] == 94
+    assert gate["outside_3s_action_fp_remaining"] == 20
+    assert gate["outside_3s_action_fp_rejected_fraction"] == 94 / 114
     assert Path(gate["impact_report"]).is_absolute()
     assert Path(gate["validation_result"]).is_absolute()
 
 
 def test_best_model_records_portable_runtime_assets() -> None:
-    """The recommended integration model should resolve its ONNX handoff asset."""
+    """The Qwen integration model has checksum-bound standalone weights."""
     registry = yaml.safe_load(REGISTRY_PATH.read_text(encoding="utf-8"))
     runtime = registry["best_model"]["runtime"]
 
-    assert runtime["onnx_status"] == "validated"
-    assert runtime["tensorrt_compatible"] is True
-    assert runtime["input_shape"] == ["batch", 4, 3, 512, 512]
-    assert Path(runtime["onnx"]).is_absolute()
-    assert Path(runtime["onnx_parity_evidence"]).is_absolute()
+    assert runtime["backend"] == "pytorch_qwen"
+    assert runtime["onnx_status"] == "exported_but_not_deployable"
+    assert runtime["tensorrt_compatible"] is False
+    assert runtime["input_shape"] == ["batch", 4, 3, 384, 672]
+    assert Path(runtime["weights"]).is_absolute()
+    assert len(runtime["weights_sha256"]) == 64
+    assert Path(runtime["parity_evidence"]).is_absolute()
 
 
 def test_beach_domain_model_records_production_selection_and_evidence() -> None:

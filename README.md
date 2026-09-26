@@ -2,12 +2,39 @@
 
 This repository supports both indoor and beach gameplay training on `main`.
 
-The canonical indoor recipe is **two-stage, full-frame SigLIP-Base**: adapt an
-existing gameplay checkpoint on the older dataset, then fine-tune exclusively
-on human-labeled data. The encoder has about 93.5M parameters, shared across four
-frames sampled at 1 Hz; average embeddings feed a binary head.
+The canonical indoor recipe is the **Qwen3.6 vision 672x384 v5 fine-tune**.
+Initialize from the selected Qwen legacy-adaptation checkpoint and fine-tune
+the full four-frame model for four epochs on `human_app_v5_val20_20260925`.
+Select the checkpoint by F1 on the frozen 20-video human validation split.
+The September 25 run selected epoch 4 (F1 96.5858% on 4,828 windows).
+The former two-stage SigLIP-Base recipe remains below for reproduction.
 
 ## Canonical training
+
+Use `scripts/train_qwen_v5_canonical.py` in `skyball-prod-infer` (which has the
+Qwen3.6 vision implementation). The recipe uses four frames at 1 Hz, a shared
+unfrozen Qwen encoder, temporal average pooling, 384x672 aspect-preserving
+letterbox with gray padding, shared horizontal flips and +/-5-degree rotation,
+light color jitter, and no random crop, RandAugment, or erasing. On two GPUs,
+global microbatch 4 with accumulation 2 gives effective batch 8. The encoder
+learning rate is 1e-6 and the head learning rate is 1e-4.
+
+```bash
+CUDA_VISIBLE_DEVICES=2,3 conda run --no-capture-output -n skyball-prod-infer \
+  python scripts/train_qwen_v5_canonical.py \
+  --output-dir /mnt/t/output/trn/skyball_gameplay/<new-versioned-run> \
+  --gpus 2,3 --dry-run
+```
+
+Remove `--dry-run` after checking the plan, GPU availability, and reviewed
+dataset. Validate every selected checkpoint on the frozen human and legacy
+sets and the canonical ten full videos using
+`workflows/gameplay_gate_validation.md`. The currently selected full-video
+policy is threshold **0.50**, padding **20 seconds per side**, merge gap **0**,
+at 1 Hz. This policy was selected on the same ten matches used for the
+retrospective gate, so those matches are not an independent test.
+
+### Previous SigLIP recipe
 
 Use reviewed datasets split by source video. Keep older/model-assisted and
 human labels separate. Validation videos are fixed; never split by frame.

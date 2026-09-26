@@ -41,8 +41,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("data", nargs="?", default="imagenet")
-    parser.add_argument("-a", "--arch", default="resnet18", choices=model_names)
+    parser.add_argument("-a", "--arch", default="resnet18", choices=model_names + ['qwen_vision'])
     parser.add_argument("--timm-model", default="")
+    parser.add_argument('--qwen-snapshot', default='')
+    parser.add_argument('--freeze-encoder', action='store_true')
     parser.add_argument("-j", "--workers", default=4, type=int)
     parser.add_argument("--epochs", default=90, type=int)
     parser.add_argument("--start-epoch", default=0, type=int)
@@ -55,6 +57,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--lr-step-size", default=30, type=int)
     parser.add_argument("--lr-gamma", default=0.1, type=float)
     parser.add_argument("--min-lr", default=0.0, type=float)
+    parser.add_argument('--warmup-epochs', default=0.0, type=float)
+    parser.add_argument('--max-grad-norm', default=0.0, type=float)
     parser.add_argument("--momentum", default=0.9, type=float)
     parser.add_argument("--wd", "--weight-decay", default=1e-4, type=float, dest="weight_decay")
     parser.add_argument("-p", "--print-freq", default=10, type=int)
@@ -75,6 +79,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--gpu", default=None, type=int)
     parser.add_argument("--no-accel", action="store_true")
     parser.add_argument("--amp", action="store_true")
+    parser.add_argument('--amp-dtype', choices=['float16', 'bfloat16'], default='float16')
     parser.add_argument("--multiprocessing-distributed", action="store_true")
     parser.add_argument("--dummy", action="store_true")
     parser.add_argument("--input-frames", default=1, type=int, choices=[1, 4])
@@ -82,6 +87,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--image-size", default=[224, 224], type=int, nargs=2)
     parser.add_argument("--crop-scale-min", default=0.08, type=float)
     parser.add_argument("--train-geometry", default="random_crop", choices=["random_crop", "full_frame"])
+    parser.add_argument('--resize-mode', default='stretch', choices=['stretch', 'letterbox'])
+    parser.add_argument('--resize-geometry', dest='resize_mode', choices=['stretch', 'letterbox'])
+    parser.add_argument('--rotation-degrees', default=0.0, type=float)
     parser.add_argument("--selection-metric", default="accuracy", choices=["accuracy", "f1", "balanced_accuracy"])
     parser.add_argument("--gameplay-loss-weight", default=1.0, type=float)
     parser.add_argument("--validation-fp32", action="store_true")
@@ -244,6 +252,10 @@ def main_worker(gpu: int | None, ngpus_per_node: int, args: argparse.Namespace) 
     args.normalization_mean, args.normalization_std = normalization_for_backbone(
         args.timm_model
     )
+    if args.qwen_snapshot:
+        if args.arch != 'qwen_vision':
+            raise ValueError('--qwen-snapshot requires --arch qwen_vision')
+        args.normalization_mean = args.normalization_std = (.5, .5, .5)
     if args.dummy:
         image_shape = (
             (args.input_frames, 3, *args.image_size)
@@ -276,7 +288,13 @@ def main_worker(gpu: int | None, ngpus_per_node: int, args: argparse.Namespace) 
         num_classes=args.num_classes,
         temporal_dropout=args.temporal_dropout,
         pretrained=args.pretrained,
+        qwen_snapshot=args.qwen_snapshot,
+        image_size=args.image_size,
     )
+    if args.freeze_encoder:
+        if not hasattr(model, 'encoder'):
+            raise ValueError('--freeze-encoder requires an encoder module')
+        model.encoder.requires_grad_(False)
     if args.distributed:
         if device.type != "cuda":
             model.to(device)
@@ -308,7 +326,7 @@ def main_worker(gpu: int | None, ngpus_per_node: int, args: argparse.Namespace) 
         backbone_lr_multiplier=args.backbone_lr_multiplier,
         optimizer_name=args.optimizer,
     )
-    scaler = torch.amp.GradScaler("cuda", enabled=args.amp and device.type == "cuda")
+    scaler = torch.amp.GradScaler("cuda", enabled=args.amp and device.type == "cuda" and args.amp_dtype == 'float16')
     scheduler = (
         CosineAnnealingLR(optimizer, T_max=args.epochs, eta_min=args.min_lr)
         if args.lr_scheduler == "cosine"
@@ -458,6 +476,9 @@ def checkpoint_payload(
         "image_size": args.image_size,
         "crop_scale_min": args.crop_scale_min,
         "train_geometry": args.train_geometry,
+        "resize_mode": getattr(args, 'resize_mode', 'stretch'),
+        "resize_geometry": getattr(args, 'resize_mode', 'stretch'),
+        "rotation_degrees": getattr(args, 'rotation_degrees', 0.0),
         "selection_metric": args.selection_metric,
         "best_selection_score": BEST_SELECTION_SCORE,
         "validation_metrics": getattr(args, "last_validation_metrics", None),
@@ -479,9 +500,14 @@ def checkpoint_payload(
         "learning_rate": args.lr,
         "backbone_lr_multiplier": args.backbone_lr_multiplier,
         "grad_accum_steps": args.grad_accum_steps,
+        "warmup_epochs": getattr(args, 'warmup_epochs', 0.0),
+        "max_grad_norm": getattr(args, 'max_grad_norm', 0.0),
         "init_checkpoint": args.init_checkpoint or None,
         "weight_decay": args.weight_decay,
         "amp": args.amp,
+        "amp_dtype": getattr(args, 'amp_dtype', 'float16'),
+        "qwen_snapshot": getattr(args, 'qwen_snapshot', ''),
+        "freeze_encoder": getattr(args, 'freeze_encoder', False),
         "num_classes": args.num_classes,
         "classes": args.classes,
         "state_dict": model.state_dict(),
@@ -511,7 +537,10 @@ def train_one_epoch(
     topk = AverageMeter(f"Acc@{min(5, args.num_classes)}", ":6.2f")
     progress = ProgressMeter(batch_count, [batch_time, data_time, losses, top1, topk], f"Epoch: [{epoch}]")
     model.train()
+    if getattr(args, 'freeze_encoder', False):
+        (model.module if hasattr(model, 'module') else model).encoder.eval()
     optimizer.zero_grad()
+    epoch_learning_rates = [group['lr'] for group in optimizer.param_groups]
     end = time.time()
     for index, (images, target) in enumerate(loader):
         if index >= batch_count:
@@ -519,21 +548,35 @@ def train_one_epoch(
         data_time.update(time.time() - end)
         images = images.to(device, non_blocking=True)
         target = target.to(device, non_blocking=True)
-        with torch.autocast(device_type=device.type, enabled=scaler.is_enabled()):
-            output = model(images)
-            loss = criterion(output, target)
-            backward_loss = loss / gradient_accumulation_divisor(
-                index,
-                batch_count,
-                args.grad_accum_steps,
-            )
+        warmup_epochs = getattr(args, 'warmup_epochs', 0.0)
+        if warmup_epochs > 0:
+            warmup_scale = min(1.0, (epoch + (index+1)/batch_count) / warmup_epochs)
+            for group, learning_rate in zip(optimizer.param_groups, epoch_learning_rates):
+                group['lr'] = learning_rate * warmup_scale
+        from contextlib import nullcontext
+        update_now = should_optimizer_step(index, batch_count, args.grad_accum_steps)
+        synchronization = (model.no_sync() if hasattr(model, 'no_sync') and not update_now
+                           else nullcontext())
+        with synchronization:
+            with torch.autocast(device_type=device.type, enabled=args.amp and device.type == 'cuda',
+                                dtype=getattr(torch, getattr(args, 'amp_dtype', 'float16'))):
+                output = model(images)
+                loss = criterion(output, target)
+                backward_loss = loss / gradient_accumulation_divisor(
+                    index,
+                    batch_count,
+                    args.grad_accum_steps,
+                )
+            scaler.scale(backward_loss).backward()
         max_k = min(5, args.num_classes)
         acc1, acck = accuracy(output, target, topk=(1, max_k))
         losses.update(loss.item(), images.size(0))
         top1.update(acc1[0], images.size(0))
         topk.update(acck[0], images.size(0))
-        scaler.scale(backward_loss).backward()
-        if should_optimizer_step(index, batch_count, args.grad_accum_steps):
+        if update_now:
+            if getattr(args, 'max_grad_norm', 0.0) > 0:
+                scaler.unscale_(optimizer)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm, error_if_nonfinite=True)
             scaler.step(optimizer)
             scaler.update()
             optimizer.zero_grad()
@@ -541,6 +584,8 @@ def train_one_epoch(
         end = time.time()
         if index % args.print_freq == 0:
             progress.display(index + 1)
+    for group, learning_rate in zip(optimizer.param_groups, epoch_learning_rates):
+        group['lr'] = learning_rate
 
 
 def effective_batch_count(loader: Any, requested: int | None) -> int:
@@ -582,6 +627,7 @@ def validate(
                 with torch.autocast(
                     device_type=device.type,
                     enabled=args.amp and device.type == "cuda" and not getattr(args, "validation_fp32", False),
+                    dtype=getattr(torch, getattr(args, 'amp_dtype', 'float16')),
                 ):
                     output = model(images)
                     loss = criterion(output, target)

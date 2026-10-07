@@ -1,3 +1,8 @@
+> Current indoor default (2026-10-07): use clean val48 from
+> `validation/gameplay_indoor_v8_val48_clean_v2.json`. Preserve those source
+> videos, audit reencodes, and add new matches to training. No val20/val50
+> evaluation is required. Historical instructions below document older splits.
+
 # New Gameplay Dataset With Static Validation
 
 Use this workflow when adding a new gameplay workbook while preserving an

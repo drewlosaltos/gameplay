@@ -39,24 +39,19 @@ the Google Drive version name in local outputs.
 3. Stop for user review before extracting the full training dataset.
 4. After approval, extract an ImageNet-style frame dataset under
    `/mnt/t/data/vball/skyball/gameplay/vN`.
-5. Canonical indoor training is now **Qwen3.6 vision 672x384 v5**. Use
-   `scripts/train_qwen_v5_canonical.py` and the reviewed frozen-val20 v5
-   dataset. Initialize from the selected Qwen legacy-adaptation checkpoint,
-   fine-tune all layers for four epochs, and select by human-validation F1.
-   Use four frames at 1 Hz, letterbox geometry, shared flips and +/-5-degree
-   rotation, light color jitter, effective batch 8, and the exact launcher
-   settings. The former SigLIP recipe is retained as a reproducible baseline:
-   - Adapt an explicitly identified gameplay checkpoint on the legacy training
-     split for two epochs, selecting by legacy-validation F1.
-   - Fine-tune that checkpoint exclusively on human training data for four
-     epochs, selecting by human-validation F1.
-   - Four frames at 1 Hz, shared `vit_base_patch16_siglip_512.v2_webli` encoder,
-     average embeddings, binary head. Resize the whole frame to 512x512
-     (stretching its aspect ratio); shared flips and light color jitter, no
-     random crop, RandAugment or erasing.
-   - Use `scripts/train_two_stage_fullframe.py` and `README.md`. Both validation
-     sources below are required. ResNet/single-frame recipes are historical
-     baselines, not the default for new indoor fine-tunes.
+5. Canonical indoor training is **single-stage Qwen3.6 vision 672x384 FP8**.
+   Use `scripts/train_qwen_canonical.py` and `config/indoor_canonical.json`:
+   pretrained Qwen encoder, fresh binary head, no local gameplay initializer;
+   four fully unfrozen epochs, four GPUs, effective batch 16, encoder LR 3e-6,
+   head LR 1e-4. Use four frames, letterbox geometry, shared flips/5-degree
+   rotation, light jitter, compiled FP8 training and FP32 validation.
+   Select on clean val48 in `validation/gameplay_indoor_v8_val48_clean_v2.json`.
+   No historical val20/val50 reevaluation is required. Read the temporal manifest,
+   not ImageFolder: symlinked image directories contain excluded examples.
+   Keep the two known reencoded training duplicates excluded. Future versions
+   preserve these 48 validation sources and audit source-video aliases.
+   Historical v5 Qwen and SigLIP launchers are reproduction recipes only.
+   Both clean val48 classification and the full10 gate below are required.
 
 For new gameplay versions with a static validation request, read
 `workflows/new_dataset_static_val.md`. The comparison policy is to keep
@@ -187,7 +182,7 @@ zones around labeled transitions:
 
 - Every completed gameplay training/fine-tuning candidate requires **two
   validation sources**: (1) held-out dataset classification metrics, including
-  F1 on human and legacy validation when applicable; (2) the canonical ten full
+  F1 on clean val48 for canonical indoor runs; (2) the canonical ten full
   evaluation matches. Do not declare model validation complete from F1 alone.
 - For the second source, report per match and pooled: **number of confirmed GT
   events excluded** by the final gameplay admission ranges, and **extra footage

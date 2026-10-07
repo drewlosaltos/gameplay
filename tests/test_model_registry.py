@@ -37,7 +37,7 @@ def test_best_model_records_portable_runtime_assets() -> None:
     runtime = registry["best_model"]["runtime"]
 
     assert runtime["backend"] == "pytorch_qwen"
-    assert runtime["onnx_status"] == "exported_but_not_deployable"
+    assert runtime["onnx_status"] == "not_exported_pytorch_runtime_selected"
     assert runtime["tensorrt_compatible"] is False
     assert runtime["input_shape"] == ["batch", 4, 3, 384, 672]
     assert Path(runtime["weights"]).is_absolute()

@@ -2,37 +2,55 @@
 
 This repository supports both indoor and beach gameplay training on `main`.
 
-The canonical indoor recipe is the **Qwen3.6 vision 672x384 v5 fine-tune**.
-Initialize from the selected Qwen legacy-adaptation checkpoint and fine-tune
-the full four-frame model for four epochs on `human_app_v5_val20_20260925`.
-Select the checkpoint by F1 on the frozen 20-video human validation split.
-The September 25 run selected epoch 4 (F1 96.5858% on 4,828 windows).
-The former two-stage SigLIP-Base recipe remains below for reproduction.
+The canonical indoor model is **Qwen3.6 vision, 672x384, single-stage FP8**.
+The production checkpoint is `v8_val48_qwen672x384_single_stage_fp8_20261006_r3`,
+selected at epoch 3 of four epochs: clean val48 F1 **96.1224%** on 16,281 windows
+(previous production: 94.6217% on the same windows).
 
 ## Canonical training
 
-Use `scripts/train_qwen_v5_canonical.py` in `skyball-prod-infer` (which has the
-Qwen3.6 vision implementation). The recipe uses four frames at 1 Hz, a shared
-unfrozen Qwen encoder, temporal average pooling, 384x672 aspect-preserving
-letterbox with gray padding, shared horizontal flips and +/-5-degree rotation,
-light color jitter, and no random crop, RandAugment, or erasing. On two GPUs,
-global microbatch 4 with accumulation 2 gives effective batch 8. The encoder
-learning rate is 1e-6 and the head learning rate is 1e-4.
+Use `scripts/train_qwen_canonical.py`. Initialize the vision encoder from the
+pretrained Qwen snapshot, with a fresh gameplay head and no gameplay checkpoint.
+Train the entire model at 672x384 for four epochs. Four frames at 1 Hz share
+one encoder; their embeddings are averaged before a binary MLP. Use gray128
+letterboxing, shared horizontal flips and +/-5-degree rotation, color jitter
+0.1, temporal dropout 0.1, and no random crop, RandAugment or erasing.
+
+The exact recipe is in `config/indoor_canonical.json`: four GPUs, per-GPU batch
+4, global/effective batch 16, AdamW head LR 1e-4 and encoder LR 3e-6, weight
+decay 1e-4, half-epoch warmup, step decay every two epochs by 0.1, gradient
+clipping 1.0. Tensorwise TorchAO FP8 linears and `torch.compile(mode="default")`
+accelerate training under BF16 AMP; validation and published inference use FP32.
+
+Use the `skyball-prod-infer` environment and TorchAO 0.17.0+cu128. The validated local
+TorchAO overlay is `/mnt/t/output/skyball_gameplay/v8_qwen_fp8_prototype_20261006_r1/site`.
+The launcher checks dependencies and records their versions and input identity.
 
 ```bash
-CUDA_VISIBLE_DEVICES=2,3 conda run --no-capture-output -n skyball-prod-infer \
-  python scripts/train_qwen_v5_canonical.py \
+PYTHONPATH=/mnt/t/output/skyball_gameplay/v8_qwen_fp8_prototype_20261006_r1/site:$PWD \
+  conda run --no-capture-output -n skyball-prod-infer \
+  python scripts/train_qwen_canonical.py \
   --output-dir /mnt/t/output/trn/skyball_gameplay/<new-versioned-run> \
-  --gpus 2,3 --dry-run
+  --gpus 0,1,2,3 --dry-run
 ```
 
-Remove `--dry-run` after checking the plan, GPU availability, and reviewed
-dataset. Validate every selected checkpoint on the frozen human and legacy
-sets and the canonical ten full videos using
-`workflows/gameplay_gate_validation.md`. The currently selected full-video
-policy is threshold **0.50**, padding **20 seconds per side**, merge gap **0**,
-at 1 Hz. This policy was selected on the same ten matches used for the
-retrospective gate, so those matches are not an independent test.
+Remove `--dry-run` after checking the plan and GPU availability; run long jobs
+in tmux. **Clean val48 is the default**, frozen by source video in
+`validation/gameplay_indoor_v8_val48_clean_v2.json`. No val20/val50 reruns are
+required. Train from `metadata/windows.jsonl`: this overlay's image directories
+contain excluded JPEGs, so do not use ImageFolder. The launcher rejects changed
+validation membership, overlap, and the known reencoded training duplicates.
+Model-assisted validation labels await human acceptance; F1 remains provisional.
+
+Every selected checkpoint also requires the canonical full10 gate. The selected
+production policy is **threshold 0.9, padding 5 seconds per side, merge gap 0,
+1 Hz sampling**. It retains all 8,848 events and 1,370 rallies and rejects
+94/114 target false positives. Outside-event footage is 39.6748% of total match
+duration, versus 45.1950% for previous production at its 0.5/20-second policy.
+These ten matches informed policy selection and are retrospective validation.
+See `workflows/qwen_v8_production_20261007.md` for evidence and rollback.
+
+The old v5 launcher and two-stage recipes below are historical reproductions.
 
 ### Previous SigLIP recipe
 
@@ -118,8 +136,7 @@ a new candidate: new runs still require both validation sources below.
 ## Two required validation sources
 
 1. **Classification:** F1, precision, recall and confusion at threshold 0.5 on
-   human and older validation, comparing initializer/candidate on identical
-   samples. Report the selected epoch, not just the last epoch.
+   clean val48, comparing production/candidate on identical samples. Report the selected epoch, not just the last epoch.
 2. **Ten full matches:** confirmed events excluded by the gate, and extra
    footage admitted as a percentage of the entire match. Extra footage is
    outside the union of +/-3-second windows around confirmed GT events.
@@ -135,7 +152,7 @@ padding per side, merge gap and runtime. Compare identical settings separately
 from selected policies. These ten matches are a second validation source, not
 an independent test estimate after model/policy selection.
 
-Current candidate policy: threshold **0.15**, **10 seconds per side**, gap 0.
+Current production policy: threshold **0.9**, **5 seconds per side**, gap 0.
 This is separate from the 0.5 classifier threshold and travels with the model.
 Production requires portable/runtime qualification and pipeline acceptance;
 a high classification F1 alone is insufficient.

@@ -3,7 +3,7 @@
 # Training recipes and their separate qualification scopes are documented in README.md.
 
 schema_version: 2
-updated_at: "2026-09-26"
+updated_at: "2026-10-07"
 
 previous_production_model:
   model_id: v5_siglip_base_f4_avg_h512w512_step4s2_lr1e4_blr5e6_20260719
@@ -355,10 +355,10 @@ prior_production_model:
   policy: {threshold: 0.15, merge_gap_sec: 0.0, pad_before_sec: 10.0, pad_after_sec: 10.0}
   publication: googdrive:skyball/checkpoints/gameplay/human_app_v2_1_siglip512_coarse_val20_20260921_r1
 
-best_model: &qwen_v5_candidate
+previous_qwen_v5_model: &qwen_v5_candidate
   model_id: human_app_v5_qwen672x384_rotate5_e4_20260925_r1
-  status: production_selected
-  production: true
+  status: superseded
+  production: false
   pipeline_status: full10_completed_reconciled
   production_release: skyball-prod-20260926-r1
   qualification_status: classification_full_video_gate_and_pipeline_full10_completed
@@ -435,4 +435,88 @@ best_model: &qwen_v5_candidate
     evidence: /mnt/t/output/skyball_pipeline/evaluation_suite_qwen_gameplay_v5_20260926_r2/acceptance_validation.json
     caveat: Same detector, jersey and ReID weights, but prior suite reused upstream output and used another ReID query policy.
 
-recommended_candidate: *qwen_v5_candidate
+best_model: &qwen_v8_production
+  model_id: v8_val48_qwen672x384_single_stage_fp8_20261006_r3
+  status: production_selected
+  production: true
+  production_scope: indoor_volleyball
+  production_release: skyball-prod-20261007-r1
+  selected_at: '2026-10-07'
+  qualification_status: clean_val48_full10_gameplay_gate_and_portable_runtime_validated
+  pipeline_status: gameplay_default_promoted_no_new_end_to_end_pipeline_eval
+  selection_metric: clean val48 F1 and full10 safety/effectiveness gate
+  f1: 0.9612237941026078
+  threshold: 0.5
+  checkpoint: /mnt/t/output/trn/skyball_gameplay/v8_val48_trainclean_qwen672x384_single_stage_4gpu_20261006_r3/best_qwen672x384_v8_single_stage_4gpu.pth.tar
+  checkpoint_sha256: 67f342a391234c85b25b6b14a1a12d3034d5acd7590677b4b89d0c9d0be0600f
+  training_recipe: scripts/train_qwen_canonical.py
+  training_config: config/indoor_canonical.json
+  training_dataset: /mnt/t/data/vball/skyball/gameplay/v8_val48_trainclean_overlay_20261006_r4
+  initialization: pretrained Qwen vision encoder, fresh gameplay head; no local gameplay
+    checkpoint
+  selected_epoch: 3
+  epochs_trained: 4
+  validation:
+    split: clean_val48
+    sources: 48
+    windows: 16281
+    contract: validation/gameplay_indoor_v8_val48_clean_v2.json
+    f1: 0.9612237941026078
+    precision: 0.972411414777136
+    recall: 0.9502906731822395
+    accuracy: 0.944106627357042
+    previous_production_same_population_f1: 0.9462170341547773
+    evidence: /mnt/t/output/skyball_gameplay/v8_workflow_20261006/single_stage_clean_val48_vs_prod.json
+    label_status: model-assisted labels pending human acceptance; F1 provisional
+  full_video_gameplay_gate:
+    contract_id: gameplay_gate_eval10_v2
+    status: pass
+    evaluation_matches: 10
+    confirmed_gt_actions: 8848
+    rallies: 1370
+    matched_true_actions: 8318
+    valid_predicted_plays: 1395
+    annotated_gameplay_recall: 1.0
+    confirmed_gt_action_recall: 1.0
+    rally_full_coverage_recall: 1.0
+    matched_true_actions_rejected: 0
+    valid_predicted_plays_rejected: 0
+    outside_3s_action_fp_current: 114
+    outside_3s_action_fp_rejected: 94
+    outside_3s_action_fp_remaining: 20
+    outside_3s_action_fp_rejected_fraction: 0.8245614035087719
+    outside_event_footage_percent_total_match: 39.67477
+    policy:
+      threshold: 0.9
+      merge_gap_sec: 0.0
+      pad_before_sec: 5.0
+      pad_after_sec: 5.0
+    impact_report: /mnt/t/output/skyball_gameplay/v8_single_stage_val48_trainclean_validation_20261007_r3/selected_policy/pipeline_fp_impact.json
+    validation_result: /mnt/t/output/skyball_gameplay/v8_single_stage_val48_trainclean_validation_20261007_r3/selected_policy/validation_gate_result.json
+    event_coverage: /mnt/t/output/skyball_gameplay/v8_single_stage_val48_trainclean_validation_20261007_r3/selected_policy/coverage_candidate/metrics.json
+    runtime_sec_summed_matches: 1929.7844
+  runtime:
+    backend: pytorch_qwen
+    onnx_status: not_exported_pytorch_runtime_selected
+    tensorrt_compatible: false
+    precision: fp32
+    tf32_enabled: false
+    input_shape:
+    - batch
+    - 4
+    - 3
+    - 384
+    - 672
+    preprocessing: letterbox_bilinear_gray128
+    weights: /mnt/t/output/skyball_gameplay/qwen_v8_publication_20261007_r1/v8_val48_qwen672x384_single_stage_fp8_20261006_r3/model.safetensors
+    weights_sha256: fe1bf1893278ab1946b03038e1ed8c6225883b4c604237af268c93b63fbb5e9a
+    parity_evidence: /mnt/t/output/skyball_gameplay/qwen_v8_publication_20261007_r1/smoke_pac_120s/parity.json
+  publication_status: published_verified
+  publication:
+    remote_path: googdrive:skyball/checkpoints/gameplay/v8_val48_qwen672x384_single_stage_fp8_20261006_r3
+    artifact_manifest_sha256: 0a2459d7b9168aec1d6124650b89f57138931543d293b22ceda1cbb4384a9ca0
+    catalog_pointer: recommended.gameplay
+  selection_caveat: Same full10 matches selected and assessed the temporal policy; outside-event
+    footage is a proxy. See clean val48 contract for remaining alias/label caveats.
+
+recommended_candidate: *qwen_v8_production

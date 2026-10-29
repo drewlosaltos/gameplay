@@ -41,3 +41,10 @@ def test_production_threshold_padding_and_inclusive_frame_rounding():
     ranges = positive_ranges(scores, 2.5, 30, .2, 1.)
     assert ranges == [(3, 18)]
     assert frame_mask(ranges, 30).sum() == 16
+
+
+def test_merge_gap_is_applied_before_padding():
+    scores = [{'window_start_sec': '0', 'window_end_sec': '4', 'score_gameplay': '1'},
+              {'window_start_sec': '19', 'window_end_sec': '23', 'score_gameplay': '1'}]
+    assert positive_ranges(scores, 1., 30, .5, 5., 10.) == [(1, 9), (15, 28)]
+    assert positive_ranges(scores, 1., 30, .5, 5., 15.) == [(1, 28)]

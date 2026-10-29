@@ -1,0 +1,163 @@
+{
+  "phase": "stopped_by_user",
+  "time": 1789776250.9239552,
+  "previous_phase": "evaluate_legacy",
+  "reason": "User requested stopping the underperforming gameplay experiment",
+  "training_completed": true,
+  "full_validation_complete": false,
+  "preserved_checkpoints": [
+    "/mnt/t/output/trn/skyball_gameplay/qwen36_unfrozen_wide352x192_two_stage_20260918_r1/legacy_adaptation/last_qwen_unfrozen_wide.pth.tar",
+    "/mnt/t/output/trn/skyball_gameplay/qwen36_unfrozen_wide352x192_two_stage_20260918_r1/legacy_adaptation/best_qwen_unfrozen_wide.pth.tar",
+    "/mnt/t/output/trn/skyball_gameplay/qwen36_unfrozen_wide352x192_two_stage_20260918_r1/human_finetune/last_qwen_unfrozen_wide.pth.tar",
+    "/mnt/t/output/trn/skyball_gameplay/qwen36_unfrozen_wide352x192_two_stage_20260918_r1/human_finetune/best_qwen_unfrozen_wide.pth.tar"
+  ],
+  "metrics": {
+    "legacy_adaptation": [
+      {
+        "epoch": 1,
+        "selected": true,
+        "selection_metric": "f1",
+        "accuracy": 0.9255696202531646,
+        "count": 15800,
+        "confusion": [
+          [
+            6893,
+            887
+          ],
+          [
+            289,
+            7731
+          ]
+        ],
+        "f1": 0.9293184276956364,
+        "balanced_accuracy": 0.924977402252723,
+        "precision": 0.8970758876769552,
+        "recall": 0.9639650872817955
+      },
+      {
+        "epoch": 2,
+        "selected": false,
+        "selection_metric": "f1",
+        "accuracy": 0.9263291139240506,
+        "count": 15800,
+        "confusion": [
+          [
+            7002,
+            778
+          ],
+          [
+            386,
+            7634
+          ]
+        ],
+        "f1": 0.9291626095423564,
+        "balanced_accuracy": 0.9259351620947631,
+        "precision": 0.9075130765572991,
+        "recall": 0.9518703241895262
+      }
+    ],
+    "human_finetune": [
+      {
+        "epoch": 1,
+        "selected": true,
+        "selection_metric": "f1",
+        "accuracy": 0.7788732394366197,
+        "count": 1420,
+        "confusion": [
+          [
+            496,
+            11
+          ],
+          [
+            303,
+            610
+          ]
+        ],
+        "f1": 0.7953063885267275,
+        "balanced_accuracy": 0.8232154006018695,
+        "precision": 0.9822866344605475,
+        "recall": 0.6681270536692223
+      },
+      {
+        "epoch": 2,
+        "selected": true,
+        "selection_metric": "f1",
+        "accuracy": 0.8556338028169014,
+        "count": 1420,
+        "confusion": [
+          [
+            475,
+            32
+          ],
+          [
+            173,
+            740
+          ]
+        ],
+        "f1": 0.8783382789317508,
+        "balanced_accuracy": 0.8736992078048612,
+        "precision": 0.9585492227979274,
+        "recall": 0.8105147864184009
+      },
+      {
+        "epoch": 3,
+        "selected": false,
+        "selection_metric": "f1",
+        "accuracy": 0.819718309859155,
+        "count": 1420,
+        "confusion": [
+          [
+            492,
+            15
+          ],
+          [
+            241,
+            672
+          ]
+        ],
+        "f1": 0.84,
+        "balanced_accuracy": 0.8532246252357466,
+        "precision": 0.9781659388646288,
+        "recall": 0.7360350492880613
+      },
+      {
+        "epoch": 4,
+        "selected": false,
+        "selection_metric": "f1",
+        "accuracy": 0.8323943661971831,
+        "count": 1420,
+        "confusion": [
+          [
+            490,
+            17
+          ],
+          [
+            221,
+            692
+          ]
+        ],
+        "f1": 0.8532675709001233,
+        "balanced_accuracy": 0.862205141167143,
+        "precision": 0.9760225669957687,
+        "recall": 0.7579408543263965
+      }
+    ],
+    "human_validation": {
+      "accuracy": 0.8556338028169014,
+      "balanced_accuracy": 0.8736992078048612,
+      "confusion": {
+        "fn": 173,
+        "fp": 32,
+        "tn": 475,
+        "tp": 740
+      },
+      "count": 1420,
+      "f1": 0.8783382789317508,
+      "negative_count": 507,
+      "positive_count": 913,
+      "precision": 0.9585492227979274,
+      "recall": 0.8105147864184009,
+      "roc_auc": 0.959152370644493
+    }
+  }
+}

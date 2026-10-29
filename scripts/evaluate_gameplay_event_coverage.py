@@ -19,6 +19,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from skyball_gameplay.full10 import validate_full10_inputs
+from scripts.evaluate_gameplay_gate import predicted_intervals
 
 
 def sha256(path):
@@ -37,8 +38,22 @@ def frame_mask(ranges, count):
     return mask
 
 
-def positive_ranges(scores, fps, count, threshold, padding):
-    """Production's zero-gap window union/padding and frame rounding."""
+def positive_ranges(scores, fps, count, threshold, padding, merge_gap_sec=0.):
+    """Convert the selected temporal policy to exact source-frame ranges."""
+    if merge_gap_sec:
+        starts = [float(row['window_start_sec']) for row in scores]
+        values = [float(row['score_gameplay']) for row in scores]
+        if not all(math.isfinite(value) for value in values):
+            raise ValueError('Nonfinite score')
+        window_sizes = {round(float(row['window_end_sec']) - float(row['window_start_sec']), 6)
+                        for row in scores}
+        if len(window_sizes) != 1:
+            raise ValueError(f'Inconsistent scored-window durations: {window_sizes}')
+        windows = predicted_intervals(starts, values, threshold, window_sizes.pop(),
+                                      merge_gap_sec, padding, padding, count / fps)
+        return [(max(1, math.floor(interval.start_sec * fps) + 1),
+                 min(count, math.ceil(interval.end_sec * fps)))
+                for interval in windows]
     ranges = []
     for row in scores:
         score = float(row['score_gameplay'])
@@ -153,21 +168,24 @@ def main():
     p.add_argument('--margin-sec', type=float, default=3.)
     p.add_argument('--candidate-threshold', type=float, default=.15)
     p.add_argument('--candidate-padding-sec', type=float, default=10.)
+    p.add_argument('--candidate-merge-gap-sec', type=float, default=0.)
     args = p.parse_args()
     if args.margin_sec != 3.:
         p.error('The canonical contract uses a three-second margin')
     manifests = validate_full10_inputs(args.pipeline_root)
-    if not 0 <= args.candidate_threshold <= 1 or not math.isfinite(args.candidate_padding_sec) or args.candidate_padding_sec < 0:
-        p.error('Threshold must be in [0,1] and padding nonnegative')
+    if (not 0 <= args.candidate_threshold <= 1
+            or not math.isfinite(args.candidate_padding_sec) or args.candidate_padding_sec < 0
+            or not math.isfinite(args.candidate_merge_gap_sec) or args.candidate_merge_gap_sec < 0):
+        p.error('Threshold must be in [0,1], padding and merge gap nonnegative')
     args.output_root.mkdir(parents=True, exist_ok=False)
     first_timing = json.loads((manifests[0].parent/'gameplay_timing.json').read_text())
     policies = {'production_saved': {k: first_timing[k] for k in ['threshold','padding_sec','merge_gap_sec']}}
     if policies['production_saved']['merge_gap_sec'] != 0:
         raise ValueError('This implementation requires a zero-gap baseline policy')
     if args.candidate_scores:
-        policies['production_selected_policy'] = {'threshold': args.candidate_threshold, 'padding_sec': args.candidate_padding_sec, 'merge_gap_sec': 0.}
+        policies['production_selected_policy'] = {'threshold': args.candidate_threshold, 'padding_sec': args.candidate_padding_sec, 'merge_gap_sec': args.candidate_merge_gap_sec}
         policies.update(candidate_production_policy=dict(policies['production_saved']),
-                        candidate_selected_policy={'threshold': args.candidate_threshold, 'padding_sec': args.candidate_padding_sec, 'merge_gap_sec': 0.})
+                        candidate_selected_policy={'threshold': args.candidate_threshold, 'padding_sec': args.candidate_padding_sec, 'merge_gap_sec': args.candidate_merge_gap_sec})
     report = {'contract_id': 'gameplay_event_and_rally_frame_coverage_v1',
         'source_pipeline_root': str(args.pipeline_root), 'margin_sec': args.margin_sec,
         'definition': 'Confirmed synced_fnum +/- round(margin_sec * video FPS), inclusive, unioned and clipped. Rally envelope spans first to last confirmed event in each (set,rally), with same margin.',
@@ -202,7 +220,7 @@ def main():
         assert np.array_equal(baseline, rebuilt), f'Production range reconstruction differs: {match}'
         masks = {'production_saved': baseline}
         if args.candidate_scores:
-            masks['production_selected_policy'] = frame_mask(positive_ranges(scores, fps, count, args.candidate_threshold, args.candidate_padding_sec), count)
+            masks['production_selected_policy'] = frame_mask(positive_ranges(scores, fps, count, args.candidate_threshold, args.candidate_padding_sec, args.candidate_merge_gap_sec), count)
         provenance = {'match': match, 'source_manifest': str(path), 'gt': str(gt), 'gt_sha256': sha256(gt),
                       'gameplay_csv_sha256': sha256(path.parent/'gameplay.csv'),
                       'video': manifest['video'], 'video_resolved': str(Path(manifest['video']).resolve()),
@@ -224,7 +242,7 @@ def main():
             assert all(a['window_start_sec'] == b['window_start_sec'] and a['window_end_sec'] == b['window_end_sec'] for a,b in zip(candidate,scores))
             for name, policy in policies.items():
                 if name.startswith('candidate_'):
-                    masks[name] = frame_mask(positive_ranges(candidate, fps, count, policy['threshold'], policy['padding_sec']), count)
+                    masks[name] = frame_mask(positive_ranges(candidate, fps, count, policy['threshold'], policy['padding_sec'], policy['merge_gap_sec']), count)
         row = {'match': match, 'models': {name: evaluate_prediction(mask, events, count, fps, args.margin_sec)
                                         for name, mask in masks.items()}}
         report['per_match'].append(row)

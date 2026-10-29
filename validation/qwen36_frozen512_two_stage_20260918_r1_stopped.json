@@ -1,0 +1,33 @@
+{
+  "phase": "stopped_for_user_pivot",
+  "reason": "User requested fully unfrozen gameplay with preserved native aspect ratio",
+  "time": 1789771228.4775774,
+  "preserved_checkpoints": [
+    "/mnt/t/output/trn/skyball_gameplay/qwen36_frozen512_two_stage_20260918_r1/legacy_adaptation/last_qwen_frozen.pth.tar",
+    "/mnt/t/output/trn/skyball_gameplay/qwen36_frozen512_two_stage_20260918_r1/legacy_adaptation/best_qwen_frozen.pth.tar"
+  ],
+  "completed_validation": [
+    {
+      "epoch": 1,
+      "selected": true,
+      "selection_metric": "f1",
+      "accuracy": 0.894367088607595,
+      "count": 15800,
+      "confusion": [
+        [
+          6990,
+          790
+        ],
+        [
+          879,
+          7141
+        ]
+      ],
+      "f1": 0.8953670616262304,
+      "balanced_accuracy": 0.8944282930206617,
+      "precision": 0.9003908712646577,
+      "recall": 0.8903990024937656
+    }
+  ],
+  "full_validation_complete": false
+}

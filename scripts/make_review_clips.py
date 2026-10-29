@@ -103,6 +103,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--videos", nargs="*", help="Workbook video ids to render")
     parser.add_argument("--num-videos", type=int, default=4)
     parser.add_argument("--samples-per-video", type=int, default=12)
+    parser.add_argument(
+        "--binary-balanced",
+        action="store_true",
+        help="alternate gameplay and non-gameplay samples when both are available",
+    )
     parser.add_argument("--clip-seconds", type=float, default=4.0)
     parser.add_argument("--boundary-margin-sec", type=float, default=30.0)
     parser.add_argument("--seed", type=int, default=20260617)
@@ -229,16 +234,23 @@ def choose_samples(
     samples_per_video: int,
     clip_seconds: float,
     rng: random.Random,
+    binary_balanced: bool = False,
 ) -> list[Sample]:
     by_category: dict[str, list[Region]] = {}
     for region in regions:
         by_category.setdefault(region.category, []).append(region)
 
     categories = sorted(by_category, key=category_key)
+    positive = [category for category in categories if normalize_category(category) == "gameplay"]
+    negative = [category for category in categories if normalize_category(category) != "gameplay"]
     samples: list[Sample] = []
     attempts = 0
     while len(samples) < samples_per_video and attempts < samples_per_video * max(4, len(categories)):
-        category = categories[attempts % len(categories)]
+        if binary_balanced and positive and negative:
+            pool = positive if attempts % 2 == 0 else negative
+            category = pool[(attempts // 2) % len(pool)]
+        else:
+            category = categories[attempts % len(categories)]
         region = rng.choice(by_category[category])
         start = rng.uniform(region.start_sec, region.end_sec - clip_seconds)
         sample_id = f"{video}_{len(samples):02d}_{category}_{int(round(start * 1000)):09d}"
@@ -487,7 +499,10 @@ def main() -> None:
     with tempfile.TemporaryDirectory(dir=output_dir, prefix="_tmp_frames_") as tmp:
         tmp_base = Path(tmp)
         for video in videos:
-            samples = choose_samples(video, eligible[video], args.samples_per_video, args.clip_seconds, rng)
+            samples = choose_samples(
+                video, eligible[video], args.samples_per_video, args.clip_seconds,
+                rng, binary_balanced=args.binary_balanced,
+            )
             sample_paths = []
             for sample in samples:
                 sample_path = sample_dir / f"{sample.sample_id}.mp4"

@@ -23,6 +23,7 @@ import torchvision.transforms as transforms
 from torch.optim.lr_scheduler import CosineAnnealingLR, StepLR
 from torch.utils.data import Subset
 
+from .acceleration import install_training_compiler, prepare_training_acceleration
 from .data import build_datasets
 from .modeling import create_gameplay_model
 from .modeling import normalization_for_backbone
@@ -80,6 +81,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-accel", action="store_true")
     parser.add_argument("--amp", action="store_true")
     parser.add_argument('--amp-dtype', choices=['float16', 'bfloat16'], default='float16')
+    parser.add_argument(
+        '--training-acceleration',
+        choices=['none', 'compile_bf16', 'compile_fp8'],
+        default='none',
+        help='Opt-in compiled Qwen training; FP8 uses tensorwise TorchAO linears',
+    )
+    parser.add_argument('--compile-mode', choices=['default', 'reduce-overhead'], default='default')
     parser.add_argument("--multiprocessing-distributed", action="store_true")
     parser.add_argument("--dummy", action="store_true")
     parser.add_argument("--input-frames", default=1, type=int, choices=[1, 4])
@@ -233,6 +241,13 @@ def main_worker(gpu: int | None, ngpus_per_node: int, args: argparse.Namespace) 
         raise ValueError("Gameplay F1 selection and loss weighting require binary labels")
     if args.gameplay_loss_weight <= 0:
         raise ValueError("gameplay loss weight must be positive")
+    if args.training_acceleration != 'none':
+        if not args.qwen_snapshot or args.arch != 'qwen_vision':
+            raise ValueError('Training acceleration currently requires Qwen vision')
+        if not args.amp or args.amp_dtype != 'bfloat16':
+            raise ValueError('Training acceleration requires BF16 AMP')
+        if args.freeze_encoder and args.training_acceleration == 'compile_fp8':
+            raise ValueError('FP8 training requires an unfrozen encoder')
     device = current_device(args.no_accel)
     if device.type == "cuda" and gpu is not None:
         torch.cuda.set_device(gpu)
@@ -295,6 +310,9 @@ def main_worker(gpu: int | None, ngpus_per_node: int, args: argparse.Namespace) 
         if not hasattr(model, 'encoder'):
             raise ValueError('--freeze-encoder requires an encoder module')
         model.encoder.requires_grad_(False)
+    acceleration_report = prepare_training_acceleration(model, args.training_acceleration)
+    if gpu in (None, 0):
+        print(f"Training acceleration: {acceleration_report}", flush=True)
     if args.distributed:
         if device.type != "cuda":
             model.to(device)
@@ -333,6 +351,10 @@ def main_worker(gpu: int | None, ngpus_per_node: int, args: argparse.Namespace) 
         else StepLR(optimizer, step_size=args.lr_step_size, gamma=args.lr_gamma)
     )
     resume_checkpoint(args, model, optimizer, scheduler, scaler, device)
+    unwrapped_model = model.module if hasattr(model, 'module') else model
+    install_training_compiler(
+        unwrapped_model, args.training_acceleration, args.compile_mode,
+    )
 
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
@@ -506,6 +528,8 @@ def checkpoint_payload(
         "weight_decay": args.weight_decay,
         "amp": args.amp,
         "amp_dtype": getattr(args, 'amp_dtype', 'float16'),
+        "training_acceleration": args.training_acceleration,
+        "compile_mode": args.compile_mode,
         "qwen_snapshot": getattr(args, 'qwen_snapshot', ''),
         "freeze_encoder": getattr(args, 'freeze_encoder', False),
         "num_classes": args.num_classes,
@@ -537,6 +561,8 @@ def train_one_epoch(
     topk = AverageMeter(f"Acc@{min(5, args.num_classes)}", ":6.2f")
     progress = ProgressMeter(batch_count, [batch_time, data_time, losses, top1, topk], f"Epoch: [{epoch}]")
     model.train()
+    epoch_started = time.monotonic()
+    processed_local = 0
     if getattr(args, 'freeze_encoder', False):
         (model.module if hasattr(model, 'module') else model).encoder.eval()
     optimizer.zero_grad()
@@ -548,6 +574,7 @@ def train_one_epoch(
         data_time.update(time.time() - end)
         images = images.to(device, non_blocking=True)
         target = target.to(device, non_blocking=True)
+        processed_local += images.size(0)
         warmup_epochs = getattr(args, 'warmup_epochs', 0.0)
         if warmup_epochs > 0:
             warmup_scale = min(1.0, (epoch + (index+1)/batch_count) / warmup_epochs)
@@ -586,6 +613,18 @@ def train_one_epoch(
             progress.display(index + 1)
     for group, learning_rate in zip(optimizer.param_groups, epoch_learning_rates):
         group['lr'] = learning_rate
+    if device.type == 'cuda':
+        torch.cuda.synchronize(device)
+    elapsed = time.monotonic() - epoch_started
+    args.last_train_timing = {
+        "epoch": epoch + 1,
+        "elapsed_sec": elapsed,
+        "global_windows": processed_local * (args.world_size if args.distributed else 1),
+        "windows_per_sec": processed_local * (args.world_size if args.distributed else 1) / elapsed,
+        "acceleration": getattr(args, 'training_acceleration', 'none'),
+    }
+    if not args.distributed or args.rank == 0:
+        print("Training timing: " + json.dumps(args.last_train_timing), flush=True)
 
 
 def effective_batch_count(loader: Any, requested: int | None) -> int:

@@ -196,8 +196,9 @@ def load_checkpoint_model(
     device: torch.device | str,
     *,
     require_input_frames: int | None = None,
+    image_size_override: tuple[int, int] | list[int] | None = None,
 ) -> tuple[torch.nn.Module, dict[str, Any]]:
-    """Reconstruct a gameplay model and load a legacy-compatible checkpoint."""
+    """Reconstruct a gameplay model, optionally at another evaluation resolution."""
     checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
     metadata = checkpoint_metadata(checkpoint)
     if (
@@ -216,7 +217,7 @@ def load_checkpoint_model(
         temporal_dropout=metadata["temporal_dropout"],
         pretrained=False,
         qwen_snapshot=metadata["qwen_snapshot"],
-        image_size=metadata["image_size"],
+        image_size=image_size_override or metadata["image_size"],
     )
     model.load_state_dict(strip_module_prefix(checkpoint["state_dict"]))
     model.to(device)

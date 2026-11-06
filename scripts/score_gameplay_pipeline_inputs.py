@@ -10,6 +10,9 @@ sys.path[:0]=[str(REPO/'scripts'),str(REPO),str(PIPE)]
 from skyball_gameplay.full10 import validate_full10_inputs
 from evaluate_gameplay_gate import load_model, score_embeddings, atomic_write_scores
 from skyball_pipeline.gameplay_runtime import iter_sampled_rgb_frames, preprocess_rgb_frame, probe_video
+from skyball_gameplay.preprocessing import LetterboxResize
+from gameplay_wide_video import iter_wide_rgb_frames
+from PIL import Image
 
 p=argparse.ArgumentParser(description=__doc__)
 p.add_argument('--shard',type=int,default=0)
@@ -26,8 +29,15 @@ paths=validate_full10_inputs(SOURCE)
 torch.set_num_threads(4)
 device=torch.device('cuda:0');torch.cuda.set_device(device)
 model,metadata=load_model(CHECKPOINT,device)
-sha=hashlib.sha256(CHECKPOINT.read_bytes()).hexdigest()
-assert metadata['input_frames']==4 and metadata['image_size']==[512,512]
+digest=hashlib.sha256()
+with CHECKPOINT.open('rb') as checkpoint_file:
+    for block in iter(lambda: checkpoint_file.read(8 * 1024 * 1024), b''):
+        digest.update(block)
+sha=digest.hexdigest()
+assert metadata['input_frames']==4
+letterbox = metadata.get('resize_mode', 'stretch') == 'letterbox'
+if not letterbox:
+    assert metadata['image_size']==[512,512]
 for path in paths[args.shard::args.num_shards]:
     start=time.monotonic();manifest=json.loads(path.read_text())
     timing=json.loads((path.parent/'gameplay_timing.json').read_text())
@@ -55,8 +65,18 @@ for path in paths[args.shard::args.num_shards]:
                 cached=torch.softmax(model.classifier(model.dropout(encoded[:4].mean(0,keepdim=True))),dim=1)[0,1]
                 parity=float(abs(direct-cached));assert parity<1e-5,parity
         embeddings.append(encoded.cpu());buffered.clear()
-    for frame in iter_sampled_rgb_frames(video,sample_fps=1.,duration_limit_sec=timing['source_frames']/info['fps']):
-        buffered.append(preprocess_rgb_frame(frame,contract))
+    iterator = (iter_wide_rgb_frames(video, sample_fps=1., duration_limit_sec=timing['source_frames']/info['fps'],
+                                    long_edge=max(metadata['image_size'])) if letterbox else
+                iter_sampled_rgb_frames(video,sample_fps=1.,duration_limit_sec=timing['source_frames']/info['fps']))
+    geometry = LetterboxResize(metadata['image_size']) if letterbox else None
+    for frame in iterator:
+        if letterbox:
+            normalized = np.asarray(geometry(Image.fromarray(frame)), dtype=np.float32).transpose(2,0,1)/255.
+            mean = np.asarray(metadata['normalization_mean'], dtype=np.float32)[:,None,None]
+            std = np.asarray(metadata['normalization_std'], dtype=np.float32)[:,None,None]
+            buffered.append((normalized-mean)/std)
+        else:
+            buffered.append(preprocess_rgb_frame(frame,contract))
         if len(buffered)==32:flush()
     flush()
     encoded=torch.cat(embeddings)
@@ -71,5 +91,8 @@ for path in paths[args.shard::args.num_shards]:
       'runtime':'PyTorch FP32; each frame encoded once, four-frame embeddings averaged',
       'model':metadata,'score_count':len(scores),'sampled_frames':len(encoded),
       'first_window_cached_vs_direct_max_score_difference':parity,'elapsed_sec':time.monotonic()-start}
+    if letterbox:
+        result['preprocessing'] = ('Pipeline-equivalent 1Hz timing, ffmpeg bilinear decode at candidate long edge; '
+                                   'PIL bilinear aspect-preserving fit with RGB128 centered padding, checkpoint normalization')
     (out/'metadata.json').write_text(json.dumps(result,indent=2)+'\n')
     print('COMPLETE',path.parent.name,len(scores),round(result['elapsed_sec'],1),flush=True)

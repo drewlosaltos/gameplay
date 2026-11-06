@@ -287,7 +287,9 @@ def evaluate(args: argparse.Namespace) -> dict[str, Any]:
     args.output_dir.mkdir(parents=True, exist_ok=True)
     use_accel = not args.no_accel and torch.accelerator.is_available()
     device = torch.accelerator.current_accelerator() if use_accel else torch.device("cpu")
-    model, metadata = load_checkpoint_model(args.checkpoint, device)
+    model, metadata = load_checkpoint_model(
+        args.checkpoint, device, image_size_override=args.image_size,
+    )
     raw_checkpoint = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
     model_input_frames = int(metadata["input_frames"])
     label_mode = str(metadata["label_mode"])

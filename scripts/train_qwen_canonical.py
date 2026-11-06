@@ -13,6 +13,8 @@ import sys
 
 REPO = Path(__file__).resolve().parents[1]
 RECIPE = REPO / 'config/indoor_canonical.json'
+sys.path.insert(0, str(REPO))
+from skyball_gameplay.data_root import dataset_path  # noqa: E402
 
 
 def validate_split(data: Path, contract: dict) -> dict:
@@ -42,7 +44,7 @@ def validate_split(data: Path, contract: dict) -> dict:
         raise ValueError('Contaminated legacy source in validation')
     if not counts['train']:
         raise ValueError('Empty training population')
-    if data.resolve() == Path(contract['dataset_root']).resolve():
+    if data.resolve() == dataset_path(contract['dataset_root']).resolve():
         if digest.hexdigest() != contract['windows_sha256']:
             raise ValueError('Canonical V8 manifest identity changed')
     return {'windows_sha256': digest.hexdigest(), 'window_counts': counts,
@@ -63,7 +65,7 @@ def main() -> None:
     recipe = json.loads(RECIPE.read_text())
     snapshot = recipe['args'][recipe['args'].index('--qwen-snapshot') + 1]
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--data', type=Path, default=Path(recipe['dataset']))
+    parser.add_argument('--data', type=Path, default=dataset_path(recipe['dataset']))
     parser.add_argument('--qwen-snapshot', type=Path, default=Path(snapshot))
     parser.add_argument('--output-dir', type=Path, required=True)
     parser.add_argument('--gpus', default='0,1,2,3')

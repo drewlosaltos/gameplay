@@ -2,7 +2,7 @@
   "recipe_id": "qwen36_v8_single_stage_fp8_val48_v1",
   "architecture": "four-frame Qwen3.6 vision encoder, temporal mean, binary MLP",
   "initialization": "pretrained Qwen vision; no local gameplay checkpoint",
-  "dataset": "/mnt/t/data/vball/skyball/gameplay/v8_val48_trainclean_overlay_20261006_r4",
+  "dataset": "derived/gameplay/v8_val48_trainclean_overlay_20261006_r4",
   "split_contract": "validation/gameplay_indoor_v8_val48_clean_v2.json",
   "global_microbatch": 16,
   "grad_accum_steps": 1,

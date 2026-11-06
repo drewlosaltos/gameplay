@@ -25,6 +25,8 @@ accelerate training under BF16 AMP; validation and published inference use FP32.
 Use the `skyball-prod-infer` environment and TorchAO 0.17.0+cu128. The validated local
 TorchAO overlay is `/mnt/t/output/skyball_gameplay/v8_qwen_fp8_prototype_20261006_r1/site`.
 The launcher checks dependencies and records their versions and input identity.
+It reads the dataset from `derived/gameplay/v8_val48_trainclean_overlay_20261006_r4`
+under `SKYBALL_DATA_ROOT` (default `/mnt/t/data/vball/skyball/unified_dataset`).
 
 ```bash
 PYTHONPATH=/mnt/t/output/skyball_gameplay/v8_qwen_fp8_prototype_20261006_r1/site:$PWD \

@@ -123,6 +123,8 @@ class TemporalWindowDataset(torch.utils.data.Dataset):
         self.temporal_shared_augment = temporal_shared_augment
         self.classes, self.class_to_idx = load_classes(root, label_mode)
         self.samples: list[tuple[list[str], int]] = []
+        # Optional per-window GT event ids (rally datasets); enables "GT events missed".
+        self.covered_event_ids: list[list[str]] = []
         windows_path = self.root / "metadata" / "windows.jsonl"
         with windows_path.open(encoding="utf-8") as handle:
             for line in handle:
@@ -138,6 +140,7 @@ class TemporalWindowDataset(torch.utils.data.Dataset):
                         record_target(record, self.class_to_idx, label_mode),
                     )
                 )
+                self.covered_event_ids.append(list(record.get("covered_event_ids", [])))
         if not self.samples:
             raise RuntimeError(f"No {split} temporal samples found in {windows_path}")
 

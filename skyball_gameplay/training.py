@@ -11,7 +11,7 @@ import time
 import warnings
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 
 import torch
 import torch.backends.cudnn as cudnn
@@ -653,9 +653,17 @@ def validate(
     progress = ProgressMeter(batch_count, [batch_time, losses, top1, topk], "Test: ")
     model.eval()
     confusion = torch.zeros((args.num_classes, args.num_classes), dtype=torch.int64, device=device)
+    dataset = loader.dataset
+    event_ids = getattr(dataset, "covered_event_ids", None)
+    track_events = bool(event_ids) and any(event_ids) and args.num_classes == 2
+    # Positive-class score per dataset index; -1 marks windows not scored (bounded smoke runs).
+    window_scores = torch.full((len(dataset),), -1.0, device=device) if track_events else None
 
-    def run(active_loader: Any, limit: int, base_progress: int = 0) -> None:
+    def run(active_loader: Any, limit: int, base_progress: int = 0, indices: Any = None) -> None:
         end = time.time()
+        order = list(indices if indices is not None else
+                     (active_loader.sampler if active_loader.sampler is not None else range(len(dataset))))
+        cursor = 0
         with torch.no_grad():
             for local_index, (images, target) in enumerate(active_loader):
                 if local_index >= limit:
@@ -672,6 +680,10 @@ def validate(
                     loss = criterion(output, target)
                 acc1, acck = accuracy(output, target, topk=(1, max_k))
                 predicted = output.argmax(dim=1)
+                if window_scores is not None:
+                    batch_indices = torch.as_tensor(order[cursor:cursor + len(target)], device=device)
+                    window_scores[batch_indices] = torch.softmax(output.float(), dim=1)[:, 1]
+                    cursor += len(target)
                 confusion.add_(torch.bincount(
                     target * args.num_classes + predicted,
                     minlength=args.num_classes ** 2,
@@ -706,11 +718,46 @@ def validate(
             num_workers=args.workers,
             pin_memory=device.type == "cuda",
         )
-        run(auxiliary_loader, len(auxiliary_loader), len(loader))
+        run(auxiliary_loader, len(auxiliary_loader), len(loader),
+            indices=range(len(loader.sampler) * args.world_size, len(loader.dataset)))
     progress.display_summary()
     args.last_validation_metrics = metrics_from_confusion(confusion)
+    if window_scores is not None:
+        if args.distributed:
+            dist.all_reduce(window_scores, dist.ReduceOp.MAX)
+        args.last_validation_metrics.update(
+            gt_events_missed_metrics(window_scores.cpu().tolist(), event_ids))
     print("Validation metrics: " + json.dumps(args.last_validation_metrics))
     return float(top1.avg)
+
+
+def gt_events_missed_metrics(
+    scores: Sequence[float],
+    covered_event_ids: Sequence[Sequence[str]],
+    thresholds: Sequence[float] = (0.5, 0.3, 0.1),
+) -> dict[str, Any]:
+    """Count GT events no window admits: every window covering the event scores below threshold.
+
+    A window admits its whole [start, start + 4 s) span (no padding). Events covered only by
+    unscored windows (score < 0, bounded smoke runs) are excluded from the population.
+    """
+    best: dict[str, float] = {}
+    for score, events in zip(scores, covered_event_ids, strict=True):
+        if score < 0:
+            continue
+        for event in events:
+            best[event] = max(score, best.get(event, -1.0))
+    total = len(best)
+    missed = {th: sorted(e for e, s in best.items() if s < th) for th in thresholds}
+    primary = missed[thresholds[0]]
+    return {
+        "gt_events": total,
+        "gt_events_missed": len(primary),
+        "gt_events_missed_pct": 100.0 * len(primary) / max(total, 1),
+        "gt_events_missed_threshold": thresholds[0],
+        "gt_events_missed_by_threshold": {str(th): len(v) for th, v in missed.items()},
+        "gt_events_missed_ids": primary,
+    }
 
 
 def metrics_from_confusion(confusion: torch.Tensor) -> dict[str, Any]:

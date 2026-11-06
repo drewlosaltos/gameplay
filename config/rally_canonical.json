@@ -1,0 +1,24 @@
+{
+  "recipe_id": "rally_sparse_v4_m2_from_prod_v8_v1",
+  "base_recipe": "config/indoor_canonical.json",
+  "architecture": "four-frame Qwen3.6 vision encoder, temporal mean, binary MLP (identical to prod gameplay v8)",
+  "initialization": "prod gameplay v8 checkpoint, model weights only (fresh optimizer/schedule)",
+  "init_checkpoint": "/mnt/t/output/trn/skyball_gameplay/v8_val48_trainclean_qwen672x384_single_stage_4gpu_20261006_r3/best_qwen672x384_v8_single_stage_4gpu.pth.tar",
+  "dataset": "/mnt/t/data/vball/skyball/gameplay/rally_sparse_v4_m2_20261105_r2",
+  "dataset_builder": "scripts/build_rally_sparse_dataset.py --margin-sec 2 --val-cuts 12 --seed 20261105",
+  "label_policy": "window t..t+3 s at 1 Hz is rally when its centre t+1.5 s is within 2 s of a human sparse-v4 event; natural class ratio",
+  "gpu_count": 2,
+  "per_gpu_batch": 4,
+  "effective_batch": 16,
+  "run_tag": "rally_qwen672x384_from_prod_v8",
+  "extra_args": ["--keep-epoch-checkpoints"],
+  "selection": "Score every epoch on full10 with scripts/score_gameplay_pipeline_inputs.py and select with scripts/evaluate_rally.py: fewest GT events missed at threshold 0.5 with no padding, then most dead time rejected. Held-out validation (12 cuts, 769 events) reports gt_events_missed per epoch but is too small to select on; validation F1 picked a worse epoch.",
+  "reference_result": {
+    "run": "/mnt/t/output/trn/skyball_gameplay/rally_sparse_v4_m2_qwen672x384_from_prod_v8_2gpu_20261105_r1",
+    "selected_epoch": 2,
+    "full10_gt_events_missed": "4 / 8848 (0.05%) at threshold 0.5, no padding",
+    "full10_dead_time_rejected": 0.873,
+    "prod_gameplay_v8_dead_time_rejected": 0.448,
+    "report": "/mnt/t/output/skyball_gameplay/rally_study_20261105/RESULT.md"
+  }
+}

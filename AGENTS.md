@@ -229,6 +229,16 @@ zones around labeled transitions:
 - This gate is currently retrospective and standalone. It does not authorize
   gameplay integration or changes in the production pipeline.
 
+## Rally Network
+
+- The rally net (rally / no rally, rejects dead time between rallies) uses the
+  gameplay architecture, initialized from prod v8. Recipe
+  `config/rally_canonical.json`; how to build, train and evaluate:
+  `workflows/rally_network.md`.
+- Select rally epochs on full10 GT events missed (then dead time rejected) with
+  `scripts/evaluate_rally.py`, not on validation F1. Missing a real touch is
+  worse than an error at the rally border.
+
 ## Skills
 
 - Use `$skyball-gameplay-dataset` for review clip generation and manifest dataset construction.

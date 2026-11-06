@@ -9,6 +9,9 @@ This repo houses the gameplay classification project: deciding whether frames or
 - Raw video root: `/mnt/t/data/vball/skyball/raw_video`
 - Raw video remote: `googdrive:skyball/raw_video`
 - Extracted gameplay dataset root: `/mnt/t/data/vball/skyball/gameplay`
+- Production training dataset: `derived/gameplay/v8_val48_trainclean_overlay_20261006_r4`
+  under `SKYBALL_DATA_ROOT` (default `/mnt/t/data/vball/skyball/unified_dataset`).
+  The canonical config and val48 contract store it relative to that root.
 - Output root: `/mnt/t/output/skyball_gameplay`
 - Training root: `/mnt/t/output/trn/skyball_gameplay`
 

@@ -123,10 +123,11 @@
     "clean_val48": 16281
   },
   "image_count": 1020504,
-  "dataset_root": "/mnt/t/data/vball/skyball/gameplay/v8_val48_trainclean_overlay_20261006_r4",
+  "dataset_root": "derived/gameplay/v8_val48_trainclean_overlay_20261006_r4",
   "windows_sha256": "8b154d8db1e98e9c5ad0e272451936821f5818f4001e1b5235c472de61d46f91",
   "summary_sha256": "e85513cd9768895ffbfc163e8d21e565ce55cb6d11085a7f0f64512caf53833b",
-  "training_view": "Manifest-only temporal dataset. Image folders are symlinks containing excluded JPEGs; do not use ImageFolder.",
+  "training_view": "Manifest-only temporal dataset. Image folders also hold 3,912 JPEGs the manifest excludes; do not use ImageFolder.",
+  "dataset_root_note": "Relative to SKYBALL_DATA_ROOT (default /mnt/t/data/vball/skyball/unified_dataset). Moved there from /mnt/t/data/vball/skyball/gameplay/ on 2026-11-05 (unified_dataset/MOVES.csv); the image folders were symlinks before the move and are real files now. windows.jsonl and summary.json are unchanged.",
   "additional_motion_screen": "/mnt/t/output/skyball_gameplay/v8_workflow_20261006/dedup_motion_probe_r1/result.json",
   "screen_limit": "Six ambiguous same-court cross-split pairs show no aligned motion comparable to a confirmed re-encode; possible same-match disjoint footage is not ruled out."
 }

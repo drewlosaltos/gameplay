@@ -61,3 +61,14 @@ def test_fp8_conversion_preserves_checkpoint_and_fp32_eval():
     plain = torch.nn.Sequential(torch.nn.Linear(32, 32), torch.nn.GELU(), torch.nn.Linear(32, 32))
     plain.load_state_dict(model.encoder.state_dict(), strict=True)
     torch.testing.assert_close(plain(inputs), expected, rtol=0, atol=0)
+
+
+def test_manifest_identity_checked_for_the_canonical_root(monkeypatch, tmp_path):
+    root = tmp_path / 'root'
+    data = root / 'derived/gameplay/canonical'
+    data.mkdir(parents=True)
+    contract = fixture_split(data)
+    contract.update(dataset_root='derived/gameplay/canonical', windows_sha256='0' * 64)
+    monkeypatch.setenv('SKYBALL_DATA_ROOT', str(root))
+    with pytest.raises(ValueError, match='identity'):
+        canonical.validate_split(data, contract)

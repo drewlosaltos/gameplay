@@ -7,6 +7,7 @@ import argparse
 import csv
 import hashlib
 import json
+import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -14,11 +15,10 @@ import pandas as pd
 
 import build_gameplay_v0_dataset as builder
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from skyball_gameplay.data_root import dataset_path  # noqa: E402
 
-DEFAULT_RELEASE = Path(
-    "/mnt/t/data/vball/skyball/gameplay/ground_truth/indoor/"
-    "skyball-gameplay-finetune/v8"
-)
+DEFAULT_RELEASE = dataset_path("annotations/gameplay/indoor/skyball-gameplay-finetune/v8")
 DEFAULT_SPLIT = Path(__file__).resolve().parents[1] / "validation/gameplay_indoor_v8_val50_v1.json"
 DEFAULT_BASE = Path("/mnt/t/data/vball/skyball/gameplay/human_app_v5_val20_20260925")
 DEFAULT_DATASET = Path("/mnt/t/data/vball/skyball/gameplay/v8_val50_20261006")

@@ -10,12 +10,12 @@ import json
 import random
 from collections import defaultdict
 from pathlib import Path
+import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from skyball_gameplay.data_root import dataset_path  # noqa: E402
 
-DEFAULT_V8 = Path(
-    "/mnt/t/data/vball/skyball/gameplay/ground_truth/indoor/"
-    "skyball-gameplay-finetune/v8"
-)
+DEFAULT_V8 = dataset_path("annotations/gameplay/indoor/skyball-gameplay-finetune/v8")
 DEFAULT_BASE = Path(
     "/mnt/t/data/vball/skyball/gameplay/human_app_v5_val20_20260925"
 )

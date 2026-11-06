@@ -12,6 +12,7 @@ This repo houses the gameplay classification project: deciding whether frames or
 - Production training dataset: `derived/gameplay/v8_val48_trainclean_overlay_20261006_r4`
   under `SKYBALL_DATA_ROOT` (default `/mnt/t/data/vball/skyball/unified_dataset`).
   The canonical config and val48 contract store it relative to that root.
+  How it was built and how to make a new version: `workflows/gameplay_v8_dataset.md`.
 - Output root: `/mnt/t/output/skyball_gameplay`
 - Training root: `/mnt/t/output/trn/skyball_gameplay`
 

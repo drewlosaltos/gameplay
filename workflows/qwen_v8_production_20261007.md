@@ -10,6 +10,9 @@ mean pooling, trained fully unfrozen directly from pretrained Qwen vision.
 Four GPUs, global batch 16, TorchAO tensorwise FP8/compiled training, FP32
 validation; encoder LR 3e-6, head LR 1e-4. Exact launch settings are in
 `config/indoor_canonical.json` in gameplay. No legacy adaptation stage.
+To reproduce it: `REPRODUCE.md`. The one-off scripts that trained, validated and
+published it are kept verbatim in `workflows/qwen_v8_production_20261007/`. The epoch-3
+training checkpoint is on Drive under `training_checkpoint/` in the bundle folder below.
 
 | Metric | Previous Qwen v5 | Qwen V8 | Better |
 |---|---:|---:|---|

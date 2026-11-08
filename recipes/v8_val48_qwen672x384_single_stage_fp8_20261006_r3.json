@@ -1,0 +1,144 @@
+{
+  "schema": "skyball_repro_recipe/v1",
+  "model_id": "v8_val48_qwen672x384_single_stage_fp8_20261006_r3",
+  "task": "gameplay_classification",
+  "code": {
+    "min_commit": "07d6eb7e10b4d6b3e7e21cf10a7f81d6004f3713",
+    "provenance_note": "Prod trained from <run>/code_snapshot (a copy of the main working tree on 2026-10-07 00:27; no git SHA recorded). The snapshot's training path (training, data, qwen_vision, acceleration, preprocessing, full10) is byte-identical to 07d6eb7. evaluation.py and modeling.py also carry the eval-only --image-size override, committed later in 879eebe. Later main adds opt-in rally features (--keep-epoch-checkpoints, covered_event_ids) that are inactive for this recipe."
+  },
+  "env": {
+    "lockfile": "requirements-lock.txt",
+    "conda_file": "environment.yml",
+    "conda_env": "skyball-prod-infer",
+    "require": {
+      "python": "3.12",
+      "torch": "2.11.0",
+      "transformers": "5.6.0",
+      "safetensors": "0.8.0",
+      "torchao": "0.17.0+cu128"
+    },
+    "pythonpath_overlays": [
+      {
+        "name": "torchao",
+        "install_cmd": "pip install --no-deps --target \"$SKYBALL_TORCHAO_OVERLAY\" torchao==0.17.0+cu128 --index-url https://download.pytorch.org/whl/cu128",
+        "path_env": "SKYBALL_TORCHAO_OVERLAY",
+        "default": "/mnt/t/output/skyball_gameplay/v8_qwen_fp8_prototype_20261006_r1/site",
+        "note": "Prod used this cu128 build of torchao on top of torch 2.11.0+cu130. It imports cleanly there, and the recipe only uses its tensorwise Float8Linear path, which runs on torch._scaled_mm. Its cu128 C++ kernels are not used, and they are untested on cu130. The wheel's RECORD file hashes match the overlay exactly."
+      }
+    ]
+  },
+  "inputs": {
+    "qwen_base": {
+      "kind": "hf",
+      "hf_repo": "Qwen/Qwen3.6-35B-A3B-FP8",
+      "revision": "95a723d08a9490559dae23d0cff1d9466213d989",
+      "fetch": {
+        "include": ["config.json", "model.safetensors.index.json", "outside.safetensors"],
+        "path_env": "SKYBALL_QWEN_SNAPSHOT",
+        "note": "Only the vision tower is used: config.json, the index, and outside.safetensors (2.9 GB, holds every model.visual.* tensor). Lands in $HF_HOME/hub; SKYBALL_QWEN_SNAPSHOT overrides the location."
+      },
+      "identity": {
+        "sha256": {
+          "config.json": "570ef7ea45a7e1d3de2b1d3c70c4ac3562d0e768acdc195778cb4f4d95025845",
+          "model.safetensors.index.json": "6f176f344e41d35b17af12904e33401da5ebff3b49fccb8bfa0185bc2d50f9d6",
+          "outside.safetensors": "bb9755bc8ebd638e6a9994ae75064f9a6ac3f56541c00a10a90b7a930d24cc4f"
+        }
+      }
+    },
+    "dataset": {
+      "kind": "data_root",
+      "path": "derived/gameplay/v8_val48_trainclean_overlay_20261006_r4",
+      "fetch": {
+        "remote": "googdrive:skyball/datasets/derived/gameplay/v8_val48_trainclean_overlay_20261006_r4",
+        "staging_env": "SKYBALL_STAGING_ROOT",
+        "staging_default": "/mnt/t/data/vball/skyball/unified_staging",
+        "checksums": "SHA256SUMS",
+        "unzip_into": "derived/gameplay",
+        "note": "19 uncompressed zips (~10 GB each), 1,020,504 frames. Unzip with -n into $SKYBALL_DATA_ROOT/derived/gameplay."
+      },
+      "identity": {
+        "windows_sha256": "8b154d8db1e98e9c5ad0e272451936821f5818f4001e1b5235c472de61d46f91",
+        "summary_sha256": "e85513cd9768895ffbfc163e8d21e565ce55cb6d11085a7f0f64512caf53833b",
+        "checksums_sha256": "11dcd1ebb309e739443b13214a3155ad63726834c817d8647d2eeb071ec1ac47"
+      }
+    },
+    "prod_bundle": {
+      "kind": "drive",
+      "remote": "googdrive:skyball/checkpoints/gameplay/v8_val48_qwen672x384_single_stage_fp8_20261006_r3",
+      "stages": ["export"],
+      "fetch": {
+        "dest_env": "SKYBALL_REPRO_ROOT",
+        "dest_default": "/mnt/t/output/skyball_repro",
+        "exclude": ["training_checkpoint/**"],
+        "note": "Published FP32 pipeline bundle; --export uses it as the template for artifact.json and qwen_vision_config.json."
+      },
+      "identity": {
+        "sha256": {
+          "artifact.json": "0a2459d7b9168aec1d6124650b89f57138931543d293b22ceda1cbb4384a9ca0",
+          "model.safetensors": "fe1bf1893278ab1946b03038e1ed8c6225883b4c604237af268c93b63fbb5e9a"
+        }
+      }
+    }
+  },
+  "hardware": {
+    "gpus": 4,
+    "gpu_type": "RTX 5090",
+    "gpu_memory_gb": 32,
+    "expected_wall_h": 5.6,
+    "note": "Prod: 2026-10-07 00:27 to 06:03, ~0.30 s/iteration, 14,928 iterations per epoch per GPU (per-GPU batch 4) plus FP32 validation each epoch."
+  },
+  "train": {
+    "launcher": "scripts/train_qwen_canonical.py",
+    "config": "config/indoor_canonical.json",
+    "recipe_id": "qwen36_v8_single_stage_fp8_val48_v1",
+    "note": "Hyperparameters live only in config/indoor_canonical.json (its args are the exact flags prod ran with); tests/test_reproduce.py checks that this recipe and that config agree.",
+    "checkpoint_name": "best_qwen672x384_v8_single_stage_4gpu.pth.tar",
+    "epoch_metrics": "epoch_metrics.jsonl"
+  },
+  "select": {
+    "rule": "Keep the epoch with the highest clean val48 F1 at threshold 0.5 (the trainer saves it as best_<tag>.pth.tar).",
+    "metric": "f1",
+    "split": "clean_val48",
+    "split_contract": "validation/gameplay_indoor_v8_val48_clean_v2.json",
+    "mode": "max"
+  },
+  "expected": {
+    "per_epoch": [
+      {"epoch": 1, "f1": 0.9576976714702278, "precision": 0.9607427505511277, "recall": 0.9546718341899065, "count": 16281},
+      {"epoch": 2, "f1": 0.9575360859348775, "precision": 0.9537741369221767, "recall": 0.9613278287977083, "count": 16281},
+      {"epoch": 3, "f1": 0.9612237941026078, "precision": 0.972411414777136, "recall": 0.9502906731822395, "count": 16281},
+      {"epoch": 4, "f1": 0.9602355149756805, "precision": 0.9726856253781658, "recall": 0.9481000926784059, "count": 16281}
+    ],
+    "selected_epoch": 3,
+    "tolerance": {
+      "f1_abs": 0.005,
+      "count_exact": true,
+      "selected_epoch_allowed": [3, 4],
+      "note": "Prod ran once, so seed-to-seed noise is unmeasured (FP8 + torch.compile + NCCL are not bitwise deterministic). 0.005 is about 2.5 binomial standard errors of F1 on 11,869 positives, and larger than the epoch 3-4 gap (0.0010) and the batch 8 vs 16 pilot gap (0.0023). Epochs 3 and 4 are within 0.001, so either may be selected."
+    },
+    "prod_reference": {
+      "remote": "googdrive:skyball/checkpoints/gameplay/v8_val48_qwen672x384_single_stage_fp8_20261006_r3/training_checkpoint/best_qwen672x384_v8_single_stage_4gpu.pth.tar",
+      "sha256": "67f342a391234c85b25b6b14a1a12d3034d5acd7590677b4b89d0c9d0be0600f",
+      "run_dir": "/mnt/t/output/trn/skyball_gameplay/v8_val48_trainclean_qwen672x384_single_stage_4gpu_20261006_r3"
+    }
+  },
+  "evaluate": {
+    "rescore": {
+      "module": "skyball_gameplay.evaluation",
+      "args": ["--split", "val", "-b", "64", "-j", "8", "--save-predictions"],
+      "note": "Standalone FP32 re-score of the selected checkpoint on the val split (clean val48); must match the selected epoch's in-training F1 within the same tolerance."
+    },
+    "full10": {
+      "in_report": false,
+      "doc": "REPRODUCE.md#full10-gate-and-promotion",
+      "policy": {"threshold": 0.9, "padding_sec_per_side": 5.0, "merge_gap_sec": 0.0, "sample_fps": 1.0},
+      "expected": {"events": 8848, "events_excluded": 0, "rallies_fully_preserved": 1370, "target_fp_current": 114, "target_fp_rejected": 94, "outside_event_footage_percent_total_match": 39.67477, "gate_status": "pass"}
+    }
+  },
+  "export": {
+    "script": "scripts/export_qwen_gameplay_bundle.py",
+    "template_input": "prod_bundle",
+    "operating_points": {"threshold": 0.9, "padding_sec_per_side": 5.0, "merge_gap_sec": 0.0, "sample_fps": 1.0, "batch_size": 4},
+    "requires_full10": true
+  }
+}

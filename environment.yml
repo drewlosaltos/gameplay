@@ -1,0 +1,13 @@
+# Rebuilds the `skyball-prod-infer` env that trained and serves the prod gameplay model.
+#   conda env create -f environment.yml
+#   conda run -n skyball-prod-infer pip install --no-deps --target "$SKYBALL_TORCHAO_OVERLAY" \
+#     torchao==0.17.0+cu128 --index-url https://download.pytorch.org/whl/cu128
+# requirements-lock.txt is the exact pip freeze; see its header for what it leaves out.
+name: skyball-prod-infer
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12.13
+  - pip
+  - pip:
+      - -r requirements-lock.txt

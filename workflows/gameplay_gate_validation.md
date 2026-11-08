@@ -69,7 +69,7 @@ new model also passes the full-video non-regression contract.
 ## Generate Evidence and Apply the Gate
 
 The exact commands for a Qwen checkpoint are in `REPRODUCE.md` ("Full10 gate and
-promotion"), and they run in the `skyball-prod-infer` env with the pipeline repo on
+promotion"), and they run in the `skyball-gameplay-train` env (`skyball-prod-infer` on the training host) with the pipeline repo on
 `PYTHONPATH`:
 
 1. `scripts/score_gameplay_pipeline_inputs.py` scores the ten canonical inputs in FP32 with

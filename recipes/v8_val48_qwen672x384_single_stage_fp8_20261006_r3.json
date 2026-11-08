@@ -9,7 +9,7 @@
   "env": {
     "lockfile": "requirements-lock.txt",
     "conda_file": "environment.yml",
-    "conda_env": "skyball-prod-infer",
+    "conda_env": "skyball-gameplay-train",
     "require": {
       "python": "3.12",
       "torch": "2.11.0",
@@ -25,7 +25,8 @@
         "default": "/mnt/t/output/skyball_gameplay/v8_qwen_fp8_prototype_20261006_r1/site",
         "note": "Prod used this cu128 build of torchao on top of torch 2.11.0+cu130. It imports cleanly there, and the recipe only uses its tensorwise Float8Linear path, which runs on torch._scaled_mm. Its cu128 C++ kernels are not used, and they are untested on cu130. The wheel's RECORD file hashes match the overlay exactly."
       }
-    ]
+    ],
+    "note": "Training env lock. The pipeline's inference env (pipeline/environment.yml, conda name skyball-prod-infer, adds open_clip 3.3.0) is separate; prod gameplay trained in a skyball-prod-infer env with these package versions."
   },
   "inputs": {
     "qwen_base": {
@@ -33,7 +34,7 @@
       "hf_repo": "Qwen/Qwen3.6-35B-A3B-FP8",
       "revision": "95a723d08a9490559dae23d0cff1d9466213d989",
       "fetch": {
-        "include": ["config.json", "model.safetensors.index.json", "outside.safetensors"],
+        "method": "hf_download",
         "path_env": "SKYBALL_QWEN_SNAPSHOT",
         "note": "Only the vision tower is used: config.json, the index, and outside.safetensors (2.9 GB, holds every model.visual.* tensor). Lands in $HF_HOME/hub; SKYBALL_QWEN_SNAPSHOT overrides the location."
       },
@@ -43,18 +44,23 @@
           "model.safetensors.index.json": "6f176f344e41d35b17af12904e33401da5ebff3b49fccb8bfa0185bc2d50f9d6",
           "outside.safetensors": "bb9755bc8ebd638e6a9994ae75064f9a6ac3f56541c00a10a90b7a930d24cc4f"
         }
-      }
+      },
+      "allow_patterns": [
+        "config.json",
+        "model.safetensors.index.json",
+        "outside.safetensors"
+      ]
     },
     "dataset": {
       "kind": "data_root",
       "path": "derived/gameplay/v8_val48_trainclean_overlay_20261006_r4",
       "fetch": {
+        "method": "rclone_zip_shards",
         "remote": "googdrive:skyball/datasets/derived/gameplay/v8_val48_trainclean_overlay_20261006_r4",
         "staging_env": "SKYBALL_STAGING_ROOT",
-        "staging_default": "/mnt/t/data/vball/skyball/unified_staging",
         "checksums": "SHA256SUMS",
         "unzip_into": "derived/gameplay",
-        "note": "19 uncompressed zips (~10 GB each), 1,020,504 frames. Unzip with -n into $SKYBALL_DATA_ROOT/derived/gameplay."
+        "note": "19 uncompressed zips (~10 GB each, 154 GiB), 1,020,504 frames. Staged under $SKYBALL_STAGING_ROOT (default <data_root>/../unified_staging), then unzipped with -n into $SKYBALL_DATA_ROOT/derived/gameplay."
       },
       "identity": {
         "windows_sha256": "8b154d8db1e98e9c5ad0e272451936821f5818f4001e1b5235c472de61d46f91",
@@ -65,18 +71,20 @@
     "prod_bundle": {
       "kind": "drive",
       "remote": "googdrive:skyball/checkpoints/gameplay/v8_val48_qwen672x384_single_stage_fp8_20261006_r3",
-      "stages": ["export"],
+      "stages": [
+        "export"
+      ],
       "fetch": {
-        "dest_env": "SKYBALL_REPRO_ROOT",
-        "dest_default": "/mnt/t/output/skyball_repro",
-        "exclude": ["training_checkpoint/**"],
-        "note": "Published FP32 pipeline bundle; --export uses it as the template for artifact.json and qwen_vision_config.json."
+        "method": "rclone_copy",
+        "exclude": [
+          "training_checkpoint/**"
+        ],
+        "note": "Published FP32 pipeline bundle, copied to $SKYBALL_REPRO_CACHE/<local> (default ~/.cache/skyball_repro). --export uses it as the template for artifact.json and qwen_vision_config.json."
       },
-      "identity": {
-        "sha256": {
-          "artifact.json": "0a2459d7b9168aec1d6124650b89f57138931543d293b22ceda1cbb4384a9ca0",
-          "model.safetensors": "fe1bf1893278ab1946b03038e1ed8c6225883b4c604237af268c93b63fbb5e9a"
-        }
+      "local": "gameplay/v8_val48_qwen672x384_single_stage_fp8_20261006_r3/prod_bundle",
+      "sha256": {
+        "artifact.json": "0a2459d7b9168aec1d6124650b89f57138931543d293b22ceda1cbb4384a9ca0",
+        "model.safetensors": "fe1bf1893278ab1946b03038e1ed8c6225883b4c604237af268c93b63fbb5e9a"
       }
     }
   },
@@ -96,49 +104,100 @@
     "epoch_metrics": "epoch_metrics.jsonl"
   },
   "select": {
-    "rule": "Keep the epoch with the highest clean val48 F1 at threshold 0.5 (the trainer saves it as best_<tag>.pth.tar).",
+    "rule": "max_metric",
     "metric": "f1",
     "split": "clean_val48",
     "split_contract": "validation/gameplay_indoor_v8_val48_clean_v2.json",
-    "mode": "max"
+    "note": "Keep the epoch with the highest clean val48 F1 at threshold 0.5; the trainer saves it as best_<tag>.pth.tar."
   },
   "expected": {
     "per_epoch": [
-      {"epoch": 1, "f1": 0.9576976714702278, "precision": 0.9607427505511277, "recall": 0.9546718341899065, "count": 16281},
-      {"epoch": 2, "f1": 0.9575360859348775, "precision": 0.9537741369221767, "recall": 0.9613278287977083, "count": 16281},
-      {"epoch": 3, "f1": 0.9612237941026078, "precision": 0.972411414777136, "recall": 0.9502906731822395, "count": 16281},
-      {"epoch": 4, "f1": 0.9602355149756805, "precision": 0.9726856253781658, "recall": 0.9481000926784059, "count": 16281}
+      {
+        "epoch": 1,
+        "f1": 0.9576976714702278,
+        "precision": 0.9607427505511277,
+        "recall": 0.9546718341899065,
+        "count": 16281
+      },
+      {
+        "epoch": 2,
+        "f1": 0.9575360859348775,
+        "precision": 0.9537741369221767,
+        "recall": 0.9613278287977083,
+        "count": 16281
+      },
+      {
+        "epoch": 3,
+        "f1": 0.9612237941026078,
+        "precision": 0.972411414777136,
+        "recall": 0.9502906731822395,
+        "count": 16281
+      },
+      {
+        "epoch": 4,
+        "f1": 0.9602355149756805,
+        "precision": 0.9726856253781658,
+        "recall": 0.9481000926784059,
+        "count": 16281
+      }
     ],
     "selected_epoch": 3,
     "tolerance": {
       "f1_abs": 0.005,
       "count_exact": true,
-      "selected_epoch_allowed": [3, 4],
-      "note": "Prod ran once, so seed-to-seed noise is unmeasured (FP8 + torch.compile + NCCL are not bitwise deterministic). 0.005 is about 2.5 binomial standard errors of F1 on 11,869 positives, and larger than the epoch 3-4 gap (0.0010) and the batch 8 vs 16 pilot gap (0.0023). Epochs 3 and 4 are within 0.001, so either may be selected."
+      "note": "Prod ran once, so seed-to-seed noise is unmeasured (FP8 + torch.compile + NCCL are not bitwise deterministic). 0.005 is about 2.5 binomial standard errors of F1 on 11,869 positives, and larger than the epoch 3-4 gap (0.0010) and the batch 8 vs 16 pilot gap (0.0023). Epochs 3 and 4 are within 0.001, so a different selected epoch is reported as INFO, not FAIL."
     },
     "prod_reference": {
       "remote": "googdrive:skyball/checkpoints/gameplay/v8_val48_qwen672x384_single_stage_fp8_20261006_r3/training_checkpoint/best_qwen672x384_v8_single_stage_4gpu.pth.tar",
       "sha256": "67f342a391234c85b25b6b14a1a12d3034d5acd7590677b4b89d0c9d0be0600f",
-      "run_dir": "/mnt/t/output/trn/skyball_gameplay/v8_val48_trainclean_qwen672x384_single_stage_4gpu_20261006_r3"
+      "run_dir": "/mnt/t/output/trn/skyball_gameplay/v8_val48_trainclean_qwen672x384_single_stage_4gpu_20261006_r3",
+      "local": "gameplay/v8_val48_qwen672x384_single_stage_fp8_20261006_r3/training_checkpoint/best_qwen672x384_v8_single_stage_4gpu.pth.tar"
     }
   },
   "evaluate": {
     "rescore": {
       "module": "skyball_gameplay.evaluation",
-      "args": ["--split", "val", "-b", "64", "-j", "8", "--save-predictions"],
+      "args": [
+        "--split",
+        "val",
+        "-b",
+        "64",
+        "-j",
+        "8",
+        "--save-predictions"
+      ],
       "note": "Standalone FP32 re-score of the selected checkpoint on the val split (clean val48); must match the selected epoch's in-training F1 within the same tolerance."
     },
     "full10": {
       "in_report": false,
       "doc": "REPRODUCE.md#full10-gate-and-promotion",
-      "policy": {"threshold": 0.9, "padding_sec_per_side": 5.0, "merge_gap_sec": 0.0, "sample_fps": 1.0},
-      "expected": {"events": 8848, "events_excluded": 0, "rallies_fully_preserved": 1370, "target_fp_current": 114, "target_fp_rejected": 94, "outside_event_footage_percent_total_match": 39.67477, "gate_status": "pass"}
+      "policy": {
+        "threshold": 0.9,
+        "padding_sec_per_side": 5.0,
+        "merge_gap_sec": 0.0,
+        "sample_fps": 1.0
+      },
+      "expected": {
+        "events": 8848,
+        "events_excluded": 0,
+        "rallies_fully_preserved": 1370,
+        "target_fp_current": 114,
+        "target_fp_rejected": 94,
+        "outside_event_footage_percent_total_match": 39.67477,
+        "gate_status": "pass"
+      }
     }
   },
   "export": {
     "script": "scripts/export_qwen_gameplay_bundle.py",
     "template_input": "prod_bundle",
-    "operating_points": {"threshold": 0.9, "padding_sec_per_side": 5.0, "merge_gap_sec": 0.0, "sample_fps": 1.0, "batch_size": 4},
+    "operating_points": {
+      "threshold": 0.9,
+      "padding_sec_per_side": 5.0,
+      "merge_gap_sec": 0.0,
+      "sample_fps": 1.0,
+      "batch_size": 4
+    },
     "requires_full10": true
   }
 }

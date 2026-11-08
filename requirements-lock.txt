@@ -1,4 +1,7 @@
-# pip freeze of the `skyball-prod-infer` conda env on the training host, 2026-11-08.
+# Gameplay training env lock (conda env `skyball-gameplay-train`, environment.yml): the pip freeze
+# of the training host's `skyball-prod-infer` env on 2026-11-08. That host env is shared with the
+# pipeline (pipeline/environment.yml, the inference env), so it also has open_clip_torch 3.3.0.
+# All lines are plain PyPI pins; no editable, git or file:// requirements.
 # Prod (v8_val48_qwen672x384_single_stage_fp8_20261006_r3) trained in this env; its
 # packages are dated 2026-06-18, before training, but the run itself recorded no versions.
 # torch 2.11.0 from PyPI is the CUDA 13.0 build (torch.version.cuda == "13.0").

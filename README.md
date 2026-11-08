@@ -23,7 +23,7 @@ See [`workflows/beach_training.md`](workflows/beach_training.md).
 |---|---|
 | `recipes/`, `scripts/reproduce.py` | Reproduction recipes (schema `skyball_repro_recipe/v1`) and the one-command launcher |
 | `config/indoor_canonical.json`, `scripts/train_qwen_canonical.py` | Canonical indoor hyperparameters and launcher |
-| `environment.yml`, `requirements-lock.txt` | The `skyball-prod-infer` environment |
+| `environment.yml`, `requirements-lock.txt` | The gameplay training env `skyball-gameplay-train` (lock) |
 | `validation/` | Frozen splits (`gameplay_indoor_v8_val48_clean_v2.json`) and gate contracts |
 | `model_registry.yaml` | Current models with their metrics and evidence |
 | `workflows/` | Dataset builds (`gameplay_v8_dataset.md`), full10 gate (`gameplay_gate_validation.md`), prod promotion (`qwen_v8_production_20261007.md`), rally net |

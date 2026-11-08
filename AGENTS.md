@@ -184,8 +184,10 @@ zones around labeled transitions:
 - Keep new extracted gameplay image datasets under `$SKYBALL_DATA_ROOT/derived/gameplay/`
   (legacy ones stay in `/mnt/t/data/vball/skyball/gameplay`).
 - Use versioned output directories and do not overwrite completed runs.
-- Use `conda run --no-capture-output -n skyball-prod-infer ...` (`environment.yml`, plus the
-  TorchAO overlay in `REPRODUCE.md`) for training, evaluation, full10 scoring and export.
+- Use the gameplay training env for training, evaluation, full10 scoring and export:
+  `skyball-gameplay-train` from `environment.yml`, plus the TorchAO overlay in
+  `REPRODUCE.md`. On the training host this is the existing `skyball-prod-infer` env,
+  which is shared with the pipeline (`pipeline/environment.yml` is the inference env).
   Run tests with `conda run -n pt5090new python -m pytest tests -q`, since
   `skyball-prod-infer` has no pytest. Older data jobs and the historical recipes used
   `pt5090new`.

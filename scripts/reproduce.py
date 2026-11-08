@@ -3,7 +3,8 @@
 
     python scripts/reproduce.py recipes/<model_id>.json [--fetch] [--check] [--train] [--evaluate] [--export]
 
-With no stage flag it runs fetch, check, train and evaluate. The recipe schema is
+With no stage flag it runs fetch, check, train and evaluate. Exit codes: 0 PASS/ok,
+1 error, 2 FAIL. The recipe schema is
 skyball_repro_recipe/v1, shared with the jersey and CLIP-ReID repos. See REPRODUCE.md.
 """
 from __future__ import annotations
@@ -23,11 +24,14 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
-from skyball_gameplay.data_root import dataset_path, hf_snapshot_path  # noqa: E402
+from skyball_gameplay.data_root import data_root, dataset_path, hf_snapshot_path  # noqa: E402
 
 SCHEMA = "skyball_repro_recipe/v1"
 REQUIRED = ("schema", "model_id", "task", "code", "env", "inputs", "hardware", "train", "select", "expected", "evaluate")
-INPUT_FIELDS = {"hf": ("hf_repo", "revision"), "drive": ("remote",), "data_root": ("path",)}
+INPUT_FIELDS = {"hf": ("hf_repo", "revision", "allow_patterns", "identity"),
+                "drive": ("remote", "local", "sha256"),
+                "data_root": ("path", "fetch", "identity")}
+SELECT_RULES = {"max_metric": max, "min_metric": min}
 DEFAULT_STAGES = ("fetch", "check", "train", "evaluate")
 TASKS = ("gameplay_classification",)
 
@@ -52,6 +56,8 @@ def validate_recipe(recipe: dict) -> dict:
     for key in ("lockfile", "require", "pythonpath_overlays"):
         if key not in recipe["env"]:
             raise RecipeError(f"env.{key} is required")
+    if "python" not in recipe["env"]["require"]:
+        raise RecipeError("env.require must include python")
     for overlay in recipe["env"]["pythonpath_overlays"]:
         for key in ("name", "install_cmd", "path_env"):
             if key not in overlay:
@@ -60,18 +66,20 @@ def validate_recipe(recipe: dict) -> dict:
         kind = spec.get("kind")
         if kind not in INPUT_FIELDS:
             raise RecipeError(f"inputs.{name}.kind must be one of {sorted(INPUT_FIELDS)}")
-        for key in INPUT_FIELDS[kind] + ("identity",):
+        for key in INPUT_FIELDS[kind]:
             if key not in spec:
                 raise RecipeError(f"inputs.{name} ({kind}) lacks {key}")
+        if "method" not in spec.get("fetch", {}):
+            raise RecipeError(f"inputs.{name}.fetch.method is required")
     for key in ("gpus", "gpu_type", "expected_wall_h"):
         if key not in recipe["hardware"]:
             raise RecipeError(f"hardware.{key} is required")
     select = recipe["select"]
-    for key in ("rule", "metric", "mode"):
+    for key in ("rule", "metric"):
         if key not in select:
             raise RecipeError(f"select.{key} is required")
-    if select["mode"] not in ("max", "min"):
-        raise RecipeError("select.mode must be max or min")
+    if select["rule"] not in SELECT_RULES:
+        raise RecipeError(f"select.rule must be one of {sorted(SELECT_RULES)}")
     expected = recipe["expected"]
     for key in ("per_epoch", "selected_epoch", "tolerance", "prod_reference"):
         if key not in expected:
@@ -137,15 +145,24 @@ def env_path(name: str | None, default: str | None) -> Path | None:
     return Path(value) if value else (Path(default) if default else None)
 
 
+def repro_cache() -> Path:
+    """Downloaded checkpoints and prod references; never inside the checkout."""
+    return Path(os.environ.get("SKYBALL_REPRO_CACHE") or Path.home() / ".cache/skyball_repro")
+
+
+def staging_root() -> Path:
+    """Where Drive zips are staged before extraction: <data_root>/../unified_staging by default."""
+    return Path(os.environ.get("SKYBALL_STAGING_ROOT") or data_root().parent / "unified_staging")
+
+
 def input_location(name: str, spec: dict, recipe: dict) -> Path:
     fetch = spec.get("fetch", {})
     if spec["kind"] == "hf":
-        override = os.environ.get(fetch.get("path_env", "")) if fetch.get("path_env") else None
+        override = os.environ.get(fetch["path_env"]) if fetch.get("path_env") else None
         return Path(override) if override else hf_snapshot_path(spec["hf_repo"], spec["revision"])
     if spec["kind"] == "data_root":
         return dataset_path(spec["path"])
-    root = env_path(fetch.get("dest_env"), fetch.get("dest_default")) or Path.cwd()
-    return root / recipe["model_id"] / name
+    return repro_cache() / spec["local"]
 
 
 def input_stages(spec: dict) -> set[str]:
@@ -160,27 +177,28 @@ def needed_inputs(recipe: dict, stages: set[str]) -> dict:
 
 def fetch_commands(name: str, spec: dict, recipe: dict) -> list[str]:
     where = input_location(name, spec, recipe)
-    fetch = spec.get("fetch", {})
+    fetch = spec["fetch"]
     q = shlex.quote
-    if spec["kind"] == "hf":
-        cmd = ["hf", "download", spec["hf_repo"], "--revision", spec["revision"], *fetch.get("include", [])]
+    if fetch["method"] == "hf_download":
+        cmd = ["hf", "download", spec["hf_repo"], "--revision", spec["revision"], *spec["allow_patterns"]]
         if fetch.get("path_env") and os.environ.get(fetch["path_env"]):
             cmd += ["--local-dir", str(where)]
         return [" ".join(q(part) for part in cmd)]
-    if spec["kind"] == "drive":
+    if fetch["method"] == "rclone_copy":
         excludes = " ".join(f"--exclude {q(pattern)}" for pattern in fetch.get("exclude", []))
         return [f"rclone copy {q(spec['remote'])} {q(str(where))} {excludes}".strip()]
-    staging = env_path(fetch.get("staging_env"), fetch.get("staging_default")) / spec["path"]
-    target = dataset_path(fetch["unzip_into"])
-    return [f"rclone copy {q(fetch['remote'])} {q(str(staging))}",
-            f"cd {q(str(staging))} && sha256sum -c {q(fetch.get('checksums', 'SHA256SUMS'))}",
-            f"mkdir -p {q(str(target))}",
-            f"cd {q(str(staging))} && for z in *.zip; do unzip -q -n \"$z\" -d {q(str(target))}; done"]
+    if fetch["method"] == "rclone_zip_shards":
+        staging = staging_root() / spec["path"]
+        target = dataset_path(fetch["unzip_into"])
+        return [f"rclone copy {q(fetch['remote'])} {q(str(staging))}",
+                f"cd {q(str(staging))} && sha256sum -c {q(fetch.get('checksums', 'SHA256SUMS'))}",
+                f"mkdir -p {q(str(target))}",
+                f"cd {q(str(staging))} && for z in *.zip; do unzip -q -n \"$z\" -d {q(str(target))}; done"]
+    raise RecipeError(f"Unknown fetch.method {fetch['method']!r} for {name}")
 
 
 def check_identity(name: str, spec: dict, recipe: dict) -> dict:
     where = input_location(name, spec, recipe)
-    identity = spec["identity"]
     result = {"input": name, "path": str(where), "checks": []}
 
     def add(label, path, expected):
@@ -188,12 +206,17 @@ def check_identity(name: str, spec: dict, recipe: dict) -> dict:
         result["checks"].append({"file": label, "expected": expected, "found": found, "ok": found == expected})
 
     if spec["kind"] == "data_root":
+        identity = spec["identity"]
         add("metadata/windows.jsonl", where / "metadata/windows.jsonl", identity["windows_sha256"])
         if "summary_sha256" in identity:
             add("metadata/summary.json", where / "metadata/summary.json", identity["summary_sha256"])
     else:
-        for label, expected in identity.get("sha256", {}).items():
-            add(label, where / label, expected)
+        hashes = spec["identity"]["sha256"] if spec["kind"] == "hf" else spec["sha256"]
+        if isinstance(hashes, str):
+            add(where.name, where, hashes)
+        else:
+            for label, expected in hashes.items():
+                add(label, where / label, expected)
     result["ok"] = bool(result["checks"]) and all(check["ok"] for check in result["checks"])
     return result
 
@@ -266,16 +289,24 @@ def read_epoch_metrics(path: Path) -> list[dict]:
 def select_epoch(rows: list[dict], select: dict) -> dict:
     if not rows:
         raise ValueError("No epoch metrics to select from")
-    pick = max if select["mode"] == "max" else min
-    return pick(rows, key=lambda row: (row[select["metric"]], -row["epoch"]))
+    pick = SELECT_RULES[select["rule"]]
+    sign = 1 if select["rule"] == "max_metric" else -1
+    return pick(rows, key=lambda row: (row[select["metric"]], -sign * row["epoch"]))
 
 
 def within(expected: float, found: float | None, tolerance: float) -> bool:
     return found is not None and abs(found - expected) <= tolerance
 
 
+def check_row(name: str, status: str, observed=None, expected=None, tolerance=None) -> dict:
+    return {"name": name, "status": status, "observed": observed, "expected": expected, "tolerance": tolerance}
+
+
 def build_report(recipe: dict, rows: list[dict], rescore: dict | None = None) -> dict:
-    """PASS/FAIL per expected metric; full10 is a separate documented step and is not included."""
+    """Reproduced = selected checkpoint's metric and the per-epoch curve within tolerance of prod.
+
+    A different selected epoch is INFO. Full10 is a separate documented step and is not included.
+    """
     metric = recipe["select"]["metric"]
     tolerance = recipe["expected"]["tolerance"]
     tol = tolerance[f"{metric}_abs"]
@@ -283,32 +314,33 @@ def build_report(recipe: dict, rows: list[dict], rescore: dict | None = None) ->
     by_epoch = {row["epoch"]: row for row in rows}
     for expected in recipe["expected"]["per_epoch"]:
         found = by_epoch.get(expected["epoch"], {})
-        checks.append({"check": f"epoch {expected['epoch']} {metric}", "expected": expected[metric],
-                       "found": found.get(metric), "tolerance": tol,
-                       "status": "PASS" if within(expected[metric], found.get(metric), tol) else "FAIL"})
+        checks.append(check_row(f"epoch {expected['epoch']} {metric}",
+                                "PASS" if within(expected[metric], found.get(metric), tol) else "FAIL",
+                                found.get(metric), expected[metric], tol))
         if tolerance.get("count_exact") and "count" in expected:
-            checks.append({"check": f"epoch {expected['epoch']} count", "expected": expected["count"],
-                           "found": found.get("count"),
-                           "status": "PASS" if found.get("count") == expected["count"] else "FAIL"})
+            checks.append(check_row(f"epoch {expected['epoch']} count",
+                                    "PASS" if found.get("count") == expected["count"] else "FAIL",
+                                    found.get("count"), expected["count"], 0))
     selected = select_epoch(rows, recipe["select"]) if rows else None
-    allowed = tolerance.get("selected_epoch_allowed", [recipe["expected"]["selected_epoch"]])
-    checks.append({"check": "selected epoch", "expected": recipe["expected"]["selected_epoch"], "allowed": allowed,
-                   "found": selected and selected["epoch"],
-                   "status": "PASS" if selected and selected["epoch"] in allowed else "FAIL"})
-    reference = next(row[metric] for row in recipe["expected"]["per_epoch"]
-                     if row["epoch"] == recipe["expected"]["selected_epoch"])
-    checks.append({"check": f"selected {metric}", "expected": reference, "found": selected and selected[metric],
-                   "tolerance": tol,
-                   "status": "PASS" if selected and within(reference, selected[metric], tol) else "FAIL"})
+    prod_epoch = recipe["expected"]["selected_epoch"]
+    if selected is None:
+        checks.append(check_row("selected epoch", "FAIL", None, prod_epoch))
+    else:
+        checks.append(check_row("selected epoch", "PASS" if selected["epoch"] == prod_epoch else "INFO",
+                                selected["epoch"], prod_epoch))
+    reference = next(row[metric] for row in recipe["expected"]["per_epoch"] if row["epoch"] == prod_epoch)
+    checks.append(check_row(f"selected {metric}",
+                            "PASS" if selected and within(reference, selected[metric], tol) else "FAIL",
+                            selected and selected[metric], reference, tol))
     if rescore is None:
-        checks.append({"check": f"standalone re-score {metric}", "status": "SKIPPED"})
+        checks.append(check_row(f"standalone re-score {metric}", "SKIPPED"))
     else:
         found = rescore.get(metric)
-        checks.append({"check": f"standalone re-score {metric}", "expected": selected and selected[metric],
-                       "found": found, "tolerance": tol,
-                       "status": "PASS" if selected and within(selected[metric], found, tol) else "FAIL"})
-    status = "PASS" if all(c["status"] in ("PASS", "SKIPPED") for c in checks) else "FAIL"
-    return {"model_id": recipe["model_id"], "status": status,
+        checks.append(check_row(f"standalone re-score {metric}",
+                                "PASS" if selected and within(selected[metric], found, tol) else "FAIL",
+                                found, selected and selected[metric], tol))
+    verdict = "FAIL" if any(c["status"] == "FAIL" for c in checks) else "PASS"
+    return {"model_id": recipe["model_id"], "verdict": verdict,
             "selected_epoch": selected and selected["epoch"], "checks": checks,
             "not_included": "full10 gate: run the documented commands in REPRODUCE.md"}
 
@@ -457,7 +489,7 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({"check": check}, indent=2, default=str), flush=True)
         if not check["ok"]:
             print("CHECK FAILED", file=sys.stderr)
-            return 1
+            return 2
     if "train" in stages:
         stage_train(recipe, args.recipe, args.output_dir, gpus, check)
     if "evaluate" in stages:
@@ -465,14 +497,25 @@ def main(argv: list[str] | None = None) -> int:
         report_path = args.report or args.output_dir / "reproduction_report.json"
         report = stage_evaluate(recipe, args.output_dir, gpus, not args.skip_rescore, report_path)
         for row in report["checks"]:
-            print(f"{row['status']:8} {row['check']}: expected {row.get('expected')} found {row.get('found')}")
-        print(f"{report['status']}  ({report_path})")
-        if report["status"] != "PASS":
+            print(f"{row['status']:8} {row['name']}: expected {row['expected']} observed {row['observed']}")
+        print(f"{report['verdict']}  ({report_path})")
+        if report["verdict"] != "PASS":
             return 2
     if "export" in stages:
         stage_export(recipe, args.output_dir, args.gate_root, args.bundle_dir)
     return 0
 
 
+def entry() -> int:
+    """Exit 0 PASS/ok, 1 error, 2 FAIL (every stage)."""
+    try:
+        return main()
+    except SystemExit as stop:  # argparse usage errors exit 2; report them as errors (1)
+        return 1 if stop.code == 2 else int(stop.code or 0)
+    except Exception as error:  # noqa: BLE001
+        print(f"ERROR: {type(error).__name__}: {error}", file=sys.stderr)
+        return 1
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(entry())

@@ -115,6 +115,7 @@ best_model: &qwen_v8_production
   production: true
   production_scope: indoor_volleyball
   production_release: skyball-prod-20261007-r1
+  # Current pipeline release skyball-prod-20261022-r1 ships this same gameplay model and policy (unchanged since 20261007).
   selected_at: '2026-10-07'
   qualification_status: clean_val48_full10_gameplay_gate_and_portable_runtime_validated
   pipeline_status: gameplay_default_promoted_no_new_end_to_end_pipeline_eval

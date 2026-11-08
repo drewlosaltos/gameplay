@@ -16,7 +16,7 @@ repo root, which uses the reusable versions in `scripts/`.
 | `run_single_stage_full10_comparison.py` | Calls the functions above and writes `full10_common_policy_vs_prod.json` (candidate vs previous production at 0.5/20 s) | Same as above |
 | `search_single_stage_policy_when_ready.py` | Searched 272 policies (17 thresholds x 8 paddings x 2 gaps) and selected 0.9 / 5 s / gap 0; wrote `selected_policy/` | The fixed-policy commands in `REPRODUCE.md` |
 | `export.py` | Converted the epoch-3 checkpoint to the FP32 `model.safetensors` bundle, using the Qwen v5 bundle as the template for `artifact.json` and `qwen_vision_config.json` | `scripts/export_qwen_gameplay_bundle.py` |
-| `smoke.py` | 120 s pipeline-runtime parity on `eval_club_005_pac_balboa` (117 windows, max diff 0.000277) | `scripts/export_qwen_gameplay_bundle.py --parity-video` |
+| `smoke.py` | 120 s pipeline-runtime parity on `eval_club_005_pac_balboa` (117 windows, max diff 0.000277) | `scripts/export_qwen_gameplay_bundle.py --parity-scores` |
 | `finalize_bundle.py` | Added the parity and val48 contract evidence and re-hashed `artifact.json` | Folded into `scripts/export_qwen_gameplay_bundle.py` |
 
 The val48 classification step in `validate_single_stage_when_ready.py` was

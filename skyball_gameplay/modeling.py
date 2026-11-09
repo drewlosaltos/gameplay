@@ -185,10 +185,19 @@ def checkpoint_metadata(checkpoint: dict[str, Any]) -> dict[str, Any]:
         "normalization_std": list(std),
         "temporal_dropout": float(checkpoint.get("temporal_dropout", 0.0)),
         "checkpoint_epoch": int(checkpoint.get("epoch", -1)),
-        "qwen_snapshot": str(checkpoint.get("qwen_snapshot") or ""),
+        "qwen_snapshot": resolved_qwen_snapshot(checkpoint.get("qwen_snapshot")),
         "resize_mode": str(checkpoint.get("resize_geometry", checkpoint.get("resize_mode", "stretch"))),
         "resize_geometry": str(checkpoint.get("resize_geometry", checkpoint.get("resize_mode", "stretch"))),
     }
+
+
+def resolved_qwen_snapshot(stored: str | None) -> str:
+    """The checkpoint's Qwen snapshot on this machine; empty for non-Qwen checkpoints."""
+    if not stored:
+        return ""
+    from skyball_gameplay.data_root import qwen_snapshot
+
+    return str(qwen_snapshot(stored))
 
 
 def load_checkpoint_model(

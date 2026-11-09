@@ -5,7 +5,7 @@ set -euo pipefail
 # evaluate the production model, and fine-tune that checkpoint on GPU 0.
 # Historical end-to-end import: requires a new dataset directory and explicit
 # authorization for non-blocking review. To train an existing approved beach
-# dataset, use scripts/train_siglip_temporal.sh as documented in README.md.
+# dataset, use scripts/train_siglip_temporal.sh as documented in workflows/beach_training.md.
 
 REPO_ROOT=${REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}
 WORKBOOK=${WORKBOOK:-/mnt/t/data/vball/skyball/gameplay/ground_truth/v7.xlsx}

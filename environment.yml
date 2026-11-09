@@ -1,0 +1,15 @@
+# Gameplay TRAINING env lock: rebuilds the packages prod gameplay trained with. The pipeline's
+# inference env is separate (pipeline/environment.yml, conda name skyball-prod-infer). On the
+# training host, prod trained in that shared skyball-prod-infer env, which has these packages.
+#   conda env create -f environment.yml
+#   conda run -n skyball-gameplay-train pip install --no-deps --target "$SKYBALL_TORCHAO_OVERLAY" \
+#     torchao==0.17.0+cu128 --index-url https://download.pytorch.org/whl/cu128
+# requirements-lock.txt is the exact pip freeze; see its header for what it leaves out.
+name: skyball-gameplay-train
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12.13
+  - pip
+  - pip:
+      - -r requirements-lock.txt

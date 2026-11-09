@@ -1,0 +1,159 @@
+# Gameplay training env lock (conda env `skyball-gameplay-train`, environment.yml): the pip freeze
+# of the training host's `skyball-prod-infer` env on 2026-11-08. That host env is shared with the
+# pipeline (pipeline/environment.yml, the inference env), so it also has open_clip_torch 3.3.0.
+# All lines are plain PyPI pins; no editable, git or file:// requirements.
+# Prod (v8_val48_qwen672x384_single_stage_fp8_20261006_r3) trained in this env; its
+# packages are dated 2026-06-18, before training, but the run itself recorded no versions.
+# torch 2.11.0 from PyPI is the CUDA 13.0 build (torch.version.cuda == "13.0").
+#
+# Not installed by this file:
+# - torchao 0.17.0+cu128 goes on PYTHONPATH as an overlay (see REPRODUCE.md):
+#     pip install --no-deps --target "$SKYBALL_TORCHAO_OVERLAY" torchao==0.17.0+cu128 \
+#       --index-url https://download.pytorch.org/whl/cu128
+# - skyball_pipeline (needed only for full10 scoring and export parity) is an editable clone
+#   of Skyball-AI/pipeline, at 1b509cb72967b0cca64e536032d2a85ea61baa8e here:
+#     pip install --no-deps -e <pipeline clone>
+# - rfdetr (editable drewlosaltos/delta@c10c1bef) is not used by gameplay.
+# - ffmpeg comes from the system (/usr/local/bin/ffmpeg, n7.1.4 here), not from pip.
+accelerate==1.14.0
+albucore==0.0.16
+albumentations==1.4.15
+annotated-doc==0.0.4
+annotated-types==0.7.0
+antlr4-python3-runtime==4.9.3
+anyio==4.14.0
+certifi==2026.6.17
+charset-normalizer==3.4.7
+click==8.4.1
+colorama==0.4.6
+contourpy==1.3.3
+cppimport==26.4.17
+cuda-bindings==13.3.1
+cuda-pathfinder==1.5.5
+cuda-toolkit==13.0.2
+cupy-cuda12x==14.1.1
+cycler==0.12.1
+defusedxml==0.7.1
+einops==0.8.2
+et_xmlfile==2.0.0
+eval_type_backport==0.4.0
+ffmpegcv==0.3.18
+filelock==3.29.4
+filetype==1.2.0
+flatbuffers==25.12.19
+fonttools==4.63.0
+fsspec==2026.6.0
+ftfy==6.3.1
+h11==0.16.0
+hf-xet==1.5.1
+httpcore==1.0.9
+httpx==0.28.1
+huggingface_hub==1.20.0
+idna==3.7
+ImageIO==2.37.3
+Jinja2==3.1.6
+kiwisolver==1.5.0
+lazy-loader==0.5
+lief==0.17.6
+Mako==1.3.12
+markdown-it-py==4.2.0
+MarkupSafe==3.0.3
+matplotlib==3.11.0
+mdurl==0.1.2
+ml_dtypes==0.5.4
+motmetrics==1.4.0
+mpmath==1.3.0
+networkx==3.6.1
+ninja==1.13.0
+numkong==7.7.0
+numpy==2.4.6
+nvidia-cublas==13.1.0.3
+nvidia-cuda-cupti==13.0.85
+nvidia-cuda-nvrtc==13.0.88
+nvidia-cuda-runtime==13.0.96
+nvidia-cudnn-cu13==9.19.0.56
+nvidia-cufft==12.0.0.61
+nvidia-cufile==1.15.1.6
+nvidia-curand==10.4.0.35
+nvidia-cusolver==12.0.4.66
+nvidia-cusparse==12.6.3.3
+nvidia-cusparselt-cu13==0.8.0
+nvidia-ml-py==13.610.43
+nvidia-modelopt==0.44.0
+nvidia-nccl-cu13==2.28.9
+nvidia-nvjitlink==13.0.88
+nvidia-nvshmem-cu13==3.4.5
+nvidia-nvtx==13.0.85
+omegaconf==2.3.1
+onnx==1.21.0
+onnx-ir==0.2.1
+onnx_graphsurgeon==0.6.1
+onnxconverter-common==1.16.0
+onnxruntime==1.24.2
+onnxruntime-gpu==1.24.4
+onnxscript==0.7.0
+onnxsim==0.6.5
+onnxslim==0.1.94
+open_clip_torch==3.3.0
+opencv-python==4.11.0.86
+opencv-python-headless==4.10.0.84
+openpyxl==3.1.5
+pandas==3.0.3
+peft==0.19.1
+pi_heif==1.4.0
+pillow==12.2.0
+pillow-avif-plugin==1.5.5
+platformdirs==4.10.0
+polygraphy==0.50.3
+protobuf==7.35.1
+psutil==7.2.2
+PuLP==3.3.2
+pybind11==3.0.4
+pycocotools==2.0.11
+pycuda==2026.1
+pydantic==2.13.4
+pydantic_core==2.46.4
+pyDeprecate==0.9.0
+Pygments==2.20.0
+pyparsing==3.3.2
+python-dateutil==2.9.0.post0
+python-dotenv==1.2.2
+pytools==2026.1.1
+PyYAML==6.0.3
+regex==2026.5.9
+requests==2.34.2
+requests-toolbelt==1.0.0
+rf100vl==1.1.2
+rich==15.0.0
+roboflow==1.3.10
+safetensors==0.8.0
+scikit-image==0.26.0
+scipy==1.17.1
+setuptools==81.0.0
+shellingham==1.5.4
+siphash24==1.8
+six==1.17.0
+stringzilla==4.6.2
+supervision==0.29.0.post0
+sympy==1.14.0
+tabulate==0.9.0
+tensorrt_cu13==11.1.0.106
+tensorrt_cu13_bindings==11.1.0.106
+tensorrt_cu13_libs==11.1.0.106
+tifffile==2026.3.3
+timm==1.0.27
+tokenizers==0.22.2
+torch==2.11.0
+torchvision==0.26.0
+tqdm==4.68.3
+trackeval==1.3.0
+transformers==5.6.0
+triton==3.6.0
+typer==0.25.1
+typing-inspection==0.4.2
+typing_extensions==4.15.0
+urllib3==2.7.0
+wcwidth==0.8.1
+wheel==0.47.0
+xmltodict==1.0.4
+packaging==26.2

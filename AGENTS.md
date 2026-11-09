@@ -5,10 +5,14 @@ This repo houses the gameplay classification project: deciding whether frames or
 ## Source Data
 
 - Label workbook remote: `googdrive:skyball/datasets/gameplay/<version>.xlsx`
-- Local workbook root: `/mnt/t/data/vball/skyball/gameplay/ground_truth`
+- Label workbooks and releases: `annotations/gameplay/` under `SKYBALL_DATA_ROOT`
+  (moved from `/mnt/t/data/vball/skyball/gameplay/ground_truth` on 2026-11-05; the old
+  folder remains for legacy datasets).
 - Raw video root: `/mnt/t/data/vball/skyball/raw_video`
 - Raw video remote: `googdrive:skyball/raw_video`
-- Extracted gameplay dataset root: `/mnt/t/data/vball/skyball/gameplay`
+- Extracted gameplay datasets: new versions go under `derived/gameplay/<name>_<date>_r<N>`
+  in `SKYBALL_DATA_ROOT`. Legacy datasets (v0-v7, `human_app_*`) stay under
+  `/mnt/t/data/vball/skyball/gameplay`.
 - Production training dataset: `derived/gameplay/v8_val48_trainclean_overlay_20261006_r4`
   under `SKYBALL_DATA_ROOT` (default `/mnt/t/data/vball/skyball/unified_dataset`).
   The canonical config and val48 contract store it relative to that root.
@@ -42,7 +46,7 @@ the Google Drive version name in local outputs.
    - Concatenate the 12 samples into one review video per source video.
 3. Stop for user review before extracting the full training dataset.
 4. After approval, extract an ImageNet-style frame dataset under
-   `/mnt/t/data/vball/skyball/gameplay/vN`.
+   `$SKYBALL_DATA_ROOT/derived/gameplay/<name>_<date>_r<N>` (see `workflows/gameplay_v8_dataset.md`).
 5. Canonical indoor training is **single-stage Qwen3.6 vision 672x384 FP8**.
    Use `scripts/train_qwen_canonical.py` and `config/indoor_canonical.json`:
    pretrained Qwen encoder, fresh binary head, no local gameplay initializer;
@@ -51,10 +55,11 @@ the Google Drive version name in local outputs.
    rotation, light jitter, compiled FP8 training and FP32 validation.
    Select on clean val48 in `validation/gameplay_indoor_v8_val48_clean_v2.json`.
    No historical val20/val50 reevaluation is required. Read the temporal manifest,
-   not ImageFolder: symlinked image directories contain excluded examples.
+   not ImageFolder: the image directories contain excluded examples.
    Keep the two known reencoded training duplicates excluded. Future versions
    preserve these 48 validation sources and audit source-video aliases.
-   Historical v5 Qwen and SigLIP launchers are reproduction recipes only.
+   Historical v5 Qwen and SigLIP launchers are reproduction recipes only (`HISTORY.md`).
+   Reproduce prod with `python scripts/reproduce.py recipes/<model_id>.json` (`REPRODUCE.md`).
    Both clean val48 classification and the full10 gate below are required.
 
 For new gameplay versions with a static validation request, read
@@ -67,7 +72,7 @@ matches to the training split unless the user asks to re-split validation.
 For new versions, extract actual JPEG images from raw videos into ImageNet-style folders:
 
 ```text
-/mnt/t/data/vball/skyball/gameplay/vN/
+$SKYBALL_DATA_ROOT/derived/gameplay/<name>_<date>_r<N>/
   train/
     gameplay/
     timeout/
@@ -104,7 +109,7 @@ Extraction protocol:
   datasets extracted before June 28, 2026 may use 512 pixels on the long edge;
   new 512x512 training ablations should use 1024-long-edge extracted JPEGs.
 - Use PIL Lanczos resampling and reasonable JPEG quality, currently quality 88.
-- Store generated datasets under `/mnt/t/data/vball/skyball/gameplay/vN`, not in
+- Store generated datasets under `$SKYBALL_DATA_ROOT/derived/gameplay/`, not in
   this repo.
 
 Filename scheme:
@@ -176,9 +181,16 @@ zones around labeled transitions:
 - Use `rg` for searches.
 - Use structured parsers for Excel and manifests; avoid ad hoc string parsing.
 - Keep generated review clips, checkpoints, and logs under `/mnt/t/output`, not in the repo.
-- Keep extracted gameplay image datasets under `/mnt/t/data/vball/skyball/gameplay`.
+- Keep new extracted gameplay image datasets under `$SKYBALL_DATA_ROOT/derived/gameplay/`
+  (legacy ones stay in `/mnt/t/data/vball/skyball/gameplay`).
 - Use versioned output directories and do not overwrite completed runs.
-- Use `conda run --no-capture-output -n pt5090new ...` for training and data jobs that need the SkyBall Python stack.
+- Use the gameplay training env for training, evaluation, full10 scoring and export:
+  `skyball-gameplay-train` from `environment.yml`, plus the TorchAO overlay in
+  `REPRODUCE.md`. On the training host this is the existing `skyball-prod-infer` env,
+  which is shared with the pipeline (`pipeline/environment.yml` is the inference env).
+  Run tests with `conda run -n pt5090new python -m pytest tests -q`, since
+  `skyball-prod-infer` has no pytest. Older data jobs and the historical recipes used
+  `pt5090new`.
 - Check `nvidia-smi` before launching GPU training.
 - Use tmux for long-running training.
 
